@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Monaco Playground Sandbox</title>
+  </head>
+  <body>
+    <div class="layout">
+      <header class="toolbar">
+        <div class="title">
+          <h1>Monaco JS Playground</h1>
+          <p>
+            Run JavaScript in an isolated iframe, then sync whitelisted changes
+            into an Audiotool project.
+          </p>
+        </div>
+        <section class="control-card">
+          <h2>Audiotool connection</h2>
+          <p class="subtle">
+            Client ID:
+            <code>379f8d67-b211-43b2-8a9d-9553aa8aad32</code>
+          </p>
+          <p class="subtle">
+            Redirect URL:
+            <code id="redirect-url"></code>
+          </p>
+
+          <label for="project-input">Project URL or UUID</label>
+          <input
+            id="project-input"
+            name="project-input"
+            type="text"
+            placeholder="https://beta.audiotool.com/studio?project=<project-id>"
+          />
+          <div class="buttons">
+            <button id="auth-btn" type="button">Login</button>
+            <button id="connect-btn" type="button" disabled>
+              Connect Project
+            </button>
+            <button id="disconnect-btn" type="button" disabled>Disconnect</button>
+            <button id="open-project-btn" type="button" disabled>
+              Open Project Tab
+            </button>
+          </div>
+          <p id="audiotool-status" class="status-line">Auth not initialized.</p>
+        </section>
+      </header>
+
+      <main class="panes">
+        <section class="pane editor-pane">
+          <h2>Editor</h2>
+          <div id="editor"></div>
+          <section class="control-card controls-under-editor">
+            <h2>Playground controls</h2>
+            <label for="packages">Packages (comma-separated)</label>
+            <input
+              id="packages"
+              name="packages"
+              type="text"
+              value="dayjs,lodash-es"
+              placeholder="dayjs,lodash-es,@scope/pkg@1.2.3"
+            />
+            <div class="buttons">
+              <button id="run-btn" type="button">Run</button>
+              <button id="reset-btn" type="button">Reset</button>
+            </div>
+          </section>
+        </section>
+
+        <section class="pane preview-pane">
+          <h2>Project preview</h2>
+          <p class="subtle preview-hint">
+            If embedded login fails, use <strong>Open Project Tab</strong> to
+            authenticate in a full tab, then click <strong>Reload Preview</strong>.
+          </p>
+          <div class="buttons preview-buttons">
+            <button id="reload-preview-btn" type="button" disabled>
+              Reload Preview
+            </button>
+          </div>
+          <iframe
+            id="project-preview"
+            title="Audiotool project preview"
+          ></iframe>
+        </section>
+      </main>
+
+      <details class="console-section">
+        <summary>Console</summary>
+        <pre id="console-output"></pre>
+      </details>
+
+      <iframe id="runtime-frame" sandbox="allow-scripts" hidden></iframe>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
