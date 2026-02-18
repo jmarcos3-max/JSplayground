@@ -18,9 +18,21 @@ self.MonacoEnvironment = {
 const defaultPackages = "dayjs,lodash-es";
 const audiotoolClientId = "379f8d67-b211-43b2-8a9d-9553aa8aad32";
 const audiotoolScope = "project:write";
-const canEmbedAudiotoolStudio = /(^|\.)audiotool\.com$/i.test(
-  window.location.hostname,
-);
+const previewMode = Object.freeze({
+  AUTO: "auto",
+  EMBED: "embed",
+  EMBED_PENDING: "embed-pending",
+  SNAPSHOT: "snapshot",
+  EMPTY: "empty",
+});
+const previewFailureReason = Object.freeze({
+  NONE: "none",
+  EMBED_INIT: "embed_init",
+  IFRAME_ERROR: "iframe_error",
+  IFRAME_TIMEOUT: "iframe_timeout",
+  MANUAL_SNAPSHOT: "manual_snapshot",
+  METADATA_ERROR: "metadata_error",
+});
 const defaultSource = `import dayjs from "dayjs";
 import { startCase } from "lodash-es";
 
@@ -54,6 +66,11 @@ const connectButton = document.getElementById("connect-btn");
 const disconnectButton = document.getElementById("disconnect-btn");
 const openProjectButton = document.getElementById("open-project-btn");
 const reloadPreviewButton = document.getElementById("reload-preview-btn");
+const tryEmbedPreviewButton = document.getElementById("try-embed-preview-btn");
+const useSnapshotPreviewButton = document.getElementById(
+  "use-snapshot-preview-btn",
+);
+const previewModeLabel = document.getElementById("preview-mode-label");
 const audiotoolStatusElement = document.getElementById("audiotool-status");
 const redirectUrlElement = document.getElementById("redirect-url");
 const projectPreview = document.getElementById("project-preview");
@@ -71,6 +88,7 @@ let isConnectingProject = false;
 let isInitializingAuth = false;
 let audiotoolQueue = Promise.resolve();
 let previewRenderVersion = 0;
+let preferredPreviewMode = previewMode.AUTO;
 
 monaco.languages.typescript.javascriptDefaults.setEagerModelSync(true);
 monaco.languages.typescript.javascriptDefaults.setCompilerOptions({
@@ -175,6 +193,39 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
+}
+
+function getFallbackReasonMessage(reasonCode) {
+  if (reasonCode === previewFailureReason.IFRAME_ERROR) {
+    return "Embedded iframe reported a load error.";
+  }
+  if (reasonCode === previewFailureReason.IFRAME_TIMEOUT) {
+    return "Embedded iframe timed out (likely frame/cookie policy restrictions).";
+  }
+  if (reasonCode === previewFailureReason.MANUAL_SNAPSHOT) {
+    return "Manual snapshot fallback selected.";
+  }
+  if (reasonCode === previewFailureReason.METADATA_ERROR) {
+    return "Snapshot metadata request failed.";
+  }
+  return "Embedded preview is unavailable right now.";
+}
+
+function setPreviewModeLabel(mode, detail = "") {
+  if (!previewModeLabel) {
+    return;
+  }
+
+  const displayMode = {
+    [previewMode.EMPTY]: "waiting for project connection",
+    [previewMode.AUTO]: "auto",
+    [previewMode.EMBED_PENDING]: "attempting embedded Studio",
+    [previewMode.EMBED]: "embedded Studio",
+    [previewMode.SNAPSHOT]: "snapshot fallback",
+  }[mode];
+
+  const base = `Preview mode: ${displayMode || mode}.`;
+  previewModeLabel.textContent = detail ? `${base} ${detail}` : base;
 }
 
 function setAudiotoolStatus(message, state = "warn") {
@@ -407,7 +458,7 @@ function createSnapshotPreviewDocument(preview, studioUrl, note = "") {
   const safeStudioUrl = escapeHtml(studioUrl);
   const safeNote = note
     ? `<p class="note">${escapeHtml(note)}</p>`
-    : `<p class="note">Embedded Studio is not available on this host. Showing a snapshot preview instead.</p>`;
+    : `<p class="note">Embedded Studio is unavailable right now. Showing snapshot fallback.</p>`;
   const imageHtml = safeImageUrl
     ? `<img src="${safeImageUrl}" alt="Project snapshot preview" />`
     : `<div class="empty-state">No cover/snapshot is available for this project yet.</div>`;
@@ -507,12 +558,16 @@ async function showFallbackProjectPreview(
   studioUrl,
   note = "",
   requestVersion = previewRenderVersion,
+  reasonCode = previewFailureReason.NONE,
 ) {
+  const reasonMessage = getFallbackReasonMessage(reasonCode);
+  const detailText = note ? `${note} ${reasonMessage}` : reasonMessage;
+
+  setPreviewModeLabel(previewMode.SNAPSHOT, reasonMessage);
   renderProjectPreviewDocument(
     createPreviewMessageDocument(
       "Loading project preview metadata...",
-      note ||
-        "Embedded Studio is blocked in this context. Falling back to project snapshot/cover.",
+      detailText,
     ),
   );
 
@@ -523,7 +578,7 @@ async function showFallbackProjectPreview(
     }
 
     renderProjectPreviewDocument(
-      createSnapshotPreviewDocument(previewMetadata, studioUrl, note),
+      createSnapshotPreviewDocument(previewMetadata, studioUrl, detailText),
     );
   } catch (error) {
     if (requestVersion !== previewRenderVersion) {
@@ -531,22 +586,29 @@ async function showFallbackProjectPreview(
     }
 
     const detail = toDisplayString(error);
+    setPreviewModeLabel(
+      previewMode.SNAPSHOT,
+      getFallbackReasonMessage(previewFailureReason.METADATA_ERROR),
+    );
     renderProjectPreviewDocument(
       createPreviewMessageDocument(
         "Connected, but preview could not be rendered in this frame.",
-        `Use Open Project Tab to continue in Studio. Details: ${detail}`,
+        `Use Open Project Tab to continue in Studio. ${detailText} Details: ${detail}`,
       ),
     );
     appendConsoleLine("warn", `Preview fallback failed: ${detail}`);
   }
 }
 
-function setProjectPreview(studioUrl, note = "") {
+function setProjectPreview(studioUrl, note = "", options = {}) {
   const requestVersion = ++previewRenderVersion;
+  const requestedMode = options.mode || preferredPreviewMode;
+  const reasonCode = options.reasonCode || previewFailureReason.EMBED_INIT;
   projectPreview.onload = null;
   projectPreview.onerror = null;
 
   if (!studioUrl) {
+    setPreviewModeLabel(previewMode.EMPTY, note);
     renderProjectPreviewDocument(
       createPreviewMessageDocument(
         note || "Log in and connect a project to display Audiotool here.",
@@ -555,19 +617,27 @@ function setProjectPreview(studioUrl, note = "") {
     return;
   }
 
-  if (!canEmbedAudiotoolStudio) {
+  if (requestedMode === previewMode.SNAPSHOT) {
     void showFallbackProjectPreview(
       studioUrl,
-      note ||
-        `Embedded Studio is disabled on ${window.location.hostname}. Showing snapshot fallback.`,
+      note || "Snapshot fallback selected.",
       requestVersion,
+      reasonCode || previewFailureReason.MANUAL_SNAPSHOT,
     );
     return;
   }
 
   let embedLoaded = false;
+  setPreviewModeLabel(
+    previewMode.EMBED_PENDING,
+    note || "Trying embedded Studio iframe.",
+  );
   projectPreview.onload = () => {
+    if (requestVersion !== previewRenderVersion) {
+      return;
+    }
     embedLoaded = true;
+    setPreviewModeLabel(previewMode.EMBED, "Embedded Studio loaded.");
   };
   projectPreview.onerror = () => {
     if (requestVersion !== previewRenderVersion) {
@@ -582,6 +652,7 @@ function setProjectPreview(studioUrl, note = "") {
       studioUrl,
       "Embedded Studio could not be rendered in this frame.",
       requestVersion,
+      previewFailureReason.IFRAME_ERROR,
     );
   };
 
@@ -600,6 +671,7 @@ function setProjectPreview(studioUrl, note = "") {
       studioUrl,
       "Embedded Studio did not finish loading in this frame.",
       requestVersion,
+      previewFailureReason.IFRAME_TIMEOUT,
     );
   }, 7000);
 }
@@ -613,6 +685,13 @@ function updateControls() {
   disconnectButton.disabled = !activeDocument || isConnectingProject;
   openProjectButton.disabled = !activeProjectStudioUrl;
   reloadPreviewButton.disabled = !activeProjectStudioUrl;
+  if (tryEmbedPreviewButton) {
+    tryEmbedPreviewButton.disabled = !activeProjectStudioUrl || isConnectingProject;
+  }
+  if (useSnapshotPreviewButton) {
+    useSnapshotPreviewButton.disabled =
+      !activeProjectStudioUrl || isConnectingProject;
+  }
 }
 
 function queueAudiotoolTask(task) {
@@ -698,9 +777,11 @@ async function connectProject(project) {
     activeDocument = document;
     activeProject = projectReference;
     activeProjectStudioUrl = studioUrl;
+    preferredPreviewMode = previewMode.AUTO;
     setProjectPreview(
       studioUrl,
-      "Project preview could not be loaded in this frame. Open it in a new tab.",
+      "Project connected. Trying embedded Studio first.",
+      { mode: preferredPreviewMode, reasonCode: previewFailureReason.EMBED_INIT },
     );
     projectInput.value = studioUrl;
     setAudiotoolStatus(`Connected to project: ${projectReference}`, "ok");
@@ -710,22 +791,16 @@ async function connectProject(project) {
     );
     appendConsoleLine(
       "system",
-      "Project preview updated. If Studio iframe is blocked, snapshot fallback will be shown.",
+      "Project preview updated. The app tries embedded Studio first and falls back when blocked.",
     );
     appendConsoleLine(
       "system",
-      "Use Open Project Tab for full Studio editing/auth when browser policies block embedded login.",
+      "Use Open Project Tab for full Studio editing/auth, then retry embedded preview if needed.",
     );
     appendConsoleLine(
       "system",
-      "Google sign-in can fail inside iframes. Authenticate in a full tab if needed, then reload preview.",
+      "If embedded login fails, authenticate in Open Project Tab and click Try Embedded Preview.",
     );
-    if (!canEmbedAudiotoolStudio) {
-      appendConsoleLine(
-        "system",
-        "This host uses snapshot fallback preview; Open Project Tab remains the full Studio workflow.",
-      );
-    }
   } finally {
     isConnectingProject = false;
     updateControls();
@@ -1180,13 +1255,52 @@ reloadPreviewButton.addEventListener("click", () => {
 
   setProjectPreview(
     activeProjectStudioUrl,
-    "Preview refreshed. If Studio iframe is blocked, snapshot fallback will be shown.",
+    "Preview refreshed.",
+    { mode: preferredPreviewMode, reasonCode: previewFailureReason.EMBED_INIT },
   );
   appendConsoleLine(
     "system",
-    "Preview reloaded.",
+    `Preview reloaded in ${preferredPreviewMode} mode.`,
   );
 });
+
+if (tryEmbedPreviewButton) {
+  tryEmbedPreviewButton.addEventListener("click", () => {
+    if (!activeProjectStudioUrl) {
+      return;
+    }
+
+    preferredPreviewMode = previewMode.EMBED;
+    setProjectPreview(
+      activeProjectStudioUrl,
+      "Manual embedded preview attempt started.",
+      { mode: previewMode.EMBED, reasonCode: previewFailureReason.EMBED_INIT },
+    );
+    appendConsoleLine(
+      "system",
+      "Trying embedded Studio preview (manual request).",
+    );
+  });
+}
+
+if (useSnapshotPreviewButton) {
+  useSnapshotPreviewButton.addEventListener("click", () => {
+    if (!activeProjectStudioUrl) {
+      return;
+    }
+
+    preferredPreviewMode = previewMode.SNAPSHOT;
+    setProjectPreview(
+      activeProjectStudioUrl,
+      "Manual snapshot fallback selected.",
+      {
+        mode: previewMode.SNAPSHOT,
+        reasonCode: previewFailureReason.MANUAL_SNAPSHOT,
+      },
+    );
+    appendConsoleLine("system", "Switched preview to snapshot fallback mode.");
+  });
+}
 
 async function initializeAudiotoolAuth() {
   isInitializingAuth = true;
@@ -1211,12 +1325,6 @@ async function initializeAudiotoolAuth() {
       );
       await ensureClient();
       appendConsoleLine("system", "Audiotool client initialized.");
-      if (!canEmbedAudiotoolStudio) {
-        setAudiotoolStatus(
-          "Logged in. This host uses snapshot fallback preview; use Open Project Tab for full Studio.",
-          "warn",
-        );
-      }
     } else {
       setAudiotoolStatus("Logged out. Click Login to authorize this app.", "warn");
     }

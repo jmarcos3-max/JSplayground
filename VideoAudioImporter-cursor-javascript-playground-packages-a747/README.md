@@ -47,8 +47,9 @@ matches exactly (protocol, path, trailing slash).
 - Creates `AudiotoolClient` when logged in
 - Connects to one project via `createSyncedDocument({ project })`
 - Shows project preview in the large pane:
-  - embedded Studio iframe when the host allows it
-  - automatic snapshot/cover fallback when iframe embedding is blocked
+  - always tries embedded Studio iframe first
+  - automatically switches to snapshot/cover fallback when iframe embedding is blocked
+  - includes manual controls to force **Try Embedded Preview** or **Use Snapshot Fallback**
 - Starts sync with `document.start()`
 - Applies whitelisted operations from sandbox messages inside
   `document.modify(...)`
@@ -57,7 +58,8 @@ matches exactly (protocol, path, trailing slash).
   console panel
 
 If embedded Studio is blocked, the app falls back to project snapshot/cover
-preview automatically. Use **Open Project Tab** for full Studio editing.
+preview automatically. After authenticating in **Open Project Tab**, you can use
+**Try Embedded Preview** to attempt iframe mode again.
 
 If the embedded preview shows a login/session token error, this is usually due
 third-party cookie restrictions in iframe context. In that case:
@@ -70,10 +72,10 @@ third-party cookie restrictions in iframe context. In that case:
 Google-based sign-in is especially likely to fail in embedded iframe contexts.
 Top-level tab authentication is the expected fallback.
 
-Important: when running on `127.0.0.1` (or any non-`audiotool.com` host),
-embedded Studio auth is cross-site and may fail because the accounts flow relies
-on same-site cookie behavior. In that case the app uses snapshot fallback in the
-preview pane, and **Open Project Tab** is the reliable full-workflow option.
+Important: when running on `127.0.0.1` or GitHub Pages, embedded Studio auth is
+cross-site and may fail because the accounts flow relies on same-site cookie
+behavior. In that case use **Open Project Tab** for authentication and keep
+snapshot fallback as the reliable preview mode.
 
 ---
 

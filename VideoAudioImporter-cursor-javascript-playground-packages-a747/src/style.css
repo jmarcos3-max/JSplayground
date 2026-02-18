@@ -168,6 +168,13 @@ body {
 .preview-buttons {
   margin-top: -2px;
   margin-bottom: 2px;
+  flex-wrap: wrap;
+}
+
+.preview-mode-label {
+  margin-top: -2px;
+  margin-bottom: 2px;
+  font-size: 0.84rem;
 }
 
 #editor {

@@ -71,14 +71,23 @@
         <section class="pane preview-pane">
           <h2>Project preview</h2>
           <p class="subtle preview-hint">
-            If embedded login fails, use <strong>Open Project Tab</strong> to
-            authenticate in a full tab, then click <strong>Reload Preview</strong>.
+            The app always tries embedded Studio first. If browser policy blocks
+            it, snapshot fallback is shown automatically.
           </p>
           <div class="buttons preview-buttons">
             <button id="reload-preview-btn" type="button" disabled>
               Reload Preview
             </button>
+            <button id="try-embed-preview-btn" type="button" disabled>
+              Try Embedded Preview
+            </button>
+            <button id="use-snapshot-preview-btn" type="button" disabled>
+              Use Snapshot Fallback
+            </button>
           </div>
+          <p id="preview-mode-label" class="subtle preview-mode-label">
+            Preview mode: waiting for project connection.
+          </p>
           <iframe
             id="project-preview"
             title="Audiotool project preview"
