@@ -44,6 +44,7 @@ try {
 const editorElement = document.getElementById("editor");
 const runButton = document.getElementById("run-btn");
 const resetButton = document.getElementById("reset-btn");
+const samplesButton = document.getElementById("samples-btn");
 const packageInput = document.getElementById("packages");
 const projectInput = document.getElementById("project-input");
 const authButton = document.getElementById("auth-btn");
@@ -55,6 +56,8 @@ const previewModeLabel = document.getElementById("preview-mode-label");
 const audiotoolStatusElement = document.getElementById("audiotool-status");
 const redirectUrlElement = document.getElementById("redirect-url");
 const projectPreview = document.getElementById("project-preview");
+const listProjectsButton = document.getElementById("list-projects-btn");
+const createProjectButton = document.getElementById("create-project-btn");
 const runtimeFrame = projectPreview;
 const consoleOutput = document.getElementById("console-output");
 const sessionProjectMeta = document.getElementById("session-project-meta");
@@ -90,15 +93,53 @@ monaco.languages.typescript.javascriptDefaults.setCompilerOptions({
   module: monaco.languages.typescript.ModuleKind.ESNext,
 });
 
+// Define a custom Monaco theme matching the Soft Slate palette and use it for the editor.
+monaco.editor.defineTheme("soft-slate", {
+  base: "vs-dark",
+  inherit: true,
+  rules: [],
+  colors: {
+    "editor.background": "#0f1724",
+    "editor.foreground": "#E6EEF8",
+    "editorLineNumber.foreground": "#93a5cf",
+    "editorLineNumber.activeForeground": "#E6EEF8",
+    "editorCursor.foreground": "#38B2AC",
+    "editor.selectionBackground": "#143836",
+    "editor.inactiveSelectionBackground": "#0f2a28",
+    "editorIndentGuide.background": "#0f2230",
+    "editorLineHighlightBackground": "#0f2230",
+  },
+});
+
+// Light variant tuned to match the Soft Light palette (used for 'light' theme)
+monaco.editor.defineTheme("soft-slate-light", {
+  base: "vs",
+  inherit: true,
+  rules: [],
+  colors: {
+    "editor.background": "#fffdf9",
+    "editor.foreground": "#2b2b25",
+    "editorLineNumber.foreground": "#7c8b9a",
+    "editorLineNumber.activeForeground": "#2b2b25",
+    "editorCursor.foreground": "#7c3aed",
+    "editor.selectionBackground": "#efe7ff",
+    "editor.inactiveSelectionBackground": "#f7f4ef",
+    "editorIndentGuide.background": "#efe6d6",
+    "editorLineHighlightBackground": "#fff6ec",
+  },
+});
+
 const editor = monaco.editor.create(editorElement, {
   value: defaultSource,
   language: "javascript",
-  theme: "vs-dark",
+  theme: "soft-slate",
   minimap: { enabled: false },
   automaticLayout: true,
   fontSize: 14,
   tabSize: 2,
 });
+
+// Appearance controls (removed) — keep editor themes defined above but do not wire runtime controls.
 
 function appendConsoleLine(level, message) {
   const line = `[${level}] ${message}`;
@@ -108,6 +149,185 @@ function appendConsoleLine(level, message) {
 
 function clearConsole() {
   consoleOutput.textContent = "";
+}
+
+// ---- Samples modal and actions ----
+const samples = [
+  {
+    id: "ensure-tonematrix",
+    title: "Ensure ToneMatrix",
+    description: "Create or update a tonematrix entity (alias: tm) and set a default position.",
+    ops: [
+      { op: "ensureEntity", entityType: "tonematrix", alias: "tm" },
+      { op: "updateField", entityAlias: "tm", field: "positionX", value: 900 },
+      { op: "updateField", entityAlias: "tm", field: "positionY", value: 600 },
+    ],
+  },
+  {
+    id: "add-synth",
+    title: "Add Synth",
+    description: "Create a synth instrument (alias: synth1) and position it in the studio.",
+    ops: [
+      { op: "ensureEntity", entityType: "synth", alias: "synth1" },
+      { op: "updateField", entityAlias: "synth1", field: "preset", value: "default-saw" },
+      { op: "updateField", entityAlias: "synth1", field: "positionX", value: 1200 },
+      { op: "updateField", entityAlias: "synth1", field: "positionY", value: 420 },
+    ],
+    code: `// Synth sample: synth1\nawait window.audiotool.apply({ ops: [\n  { op: 'ensureEntity', entityType: 'synth', alias: 'synth1' },\n  { op: 'updateField', entityAlias: 'synth1', field: 'preset', value: 'default-saw' },\n] });\n`,
+  },
+  {
+    id: "add-drum-machine",
+    title: "Add Drum Machine",
+    description: "Create a drum machine (alias: drum1) and set a drum kit/pattern.",
+    ops: [
+      { op: "ensureEntity", entityType: "drumMachine", alias: "drum1" },
+      { op: "updateField", entityAlias: "drum1", field: "kit", value: "acoustic-kit" },
+      { op: "updateField", entityAlias: "drum1", field: "positionX", value: 600 },
+      { op: "updateField", entityAlias: "drum1", field: "positionY", value: 480 },
+    ],
+  },
+  {
+    id: "add-bass",
+    title: "Add Bass",
+    description: "Create a bass instrument (alias: bass1) with a deep preset and place it.",
+    ops: [
+      { op: "ensureEntity", entityType: "bass", alias: "bass1" },
+      { op: "updateField", entityAlias: "bass1", field: "preset", value: "deep-sub" },
+      { op: "updateField", entityAlias: "bass1", field: "positionX", value: 1000 },
+      { op: "updateField", entityAlias: "bass1", field: "positionY", value: 500 },
+    ],
+  },
+  {
+    id: "populate-tonematrix-pattern",
+    title: "Populate ToneMatrix Pattern",
+    description: "Write a simple repeating pattern into the tonematrix (creates it if missing).",
+    opsGenerator: () => {
+      const pattern = Array.from({ length: 16 }, (_, i) => (i % 4 === 0 ? 1 : 0));
+      return [
+        { op: "ensureEntity", entityType: "tonematrix", alias: "tm" },
+        { op: "updateField", entityAlias: "tm", field: "pattern", value: pattern },
+      ];
+    },
+  },
+  {
+    id: "create-band",
+    title: "Create Mini Band",
+    description: "Create a small band: synth, bass and drum machine positioned across the studio.",
+    ops: [
+      { op: "ensureEntity", entityType: "synth", alias: "synth_band" },
+      { op: "updateField", entityAlias: "synth_band", field: "preset", value: "pad-choir" },
+      { op: "updateField", entityAlias: "synth_band", field: "positionX", value: 800 },
+      { op: "ensureEntity", entityType: "bass", alias: "bass_band" },
+      { op: "updateField", entityAlias: "bass_band", field: "preset", value: "sub-deep" },
+      { op: "updateField", entityAlias: "bass_band", field: "positionX", value: 1000 },
+      { op: "ensureEntity", entityType: "drumMachine", alias: "drum_band" },
+      { op: "updateField", entityAlias: "drum_band", field: "kit", value: "electro-kit" },
+      { op: "updateField", entityAlias: "drum_band", field: "positionX", value: 600 },
+    ],
+    code: `// Mini-band sample: synth_band, bass_band, drum_band\nawait window.audiotool.apply({ ops: [\n  { op: 'ensureEntity', entityType: 'synth', alias: 'synth_band' },\n  { op: 'updateField', entityAlias: 'synth_band', field: 'preset', value: 'pad-choir' },\n  { op: 'ensureEntity', entityType: 'bass', alias: 'bass_band' },\n  { op: 'updateField', entityAlias: 'bass_band', field: 'preset', value: 'sub-deep' },\n  { op: 'ensureEntity', entityType: 'drumMachine', alias: 'drum_band' },\n  { op: 'updateField', entityAlias: 'drum_band', field: 'kit', value: 'electro-kit' },\n] });\n`,
+  },
+];
+
+function openSamplesModal() {
+  // Build modal element
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.tabIndex = -1;
+
+  const modal = document.createElement("div");
+  modal.className = "modal";
+
+  const title = document.createElement("h3");
+  title.textContent = "Sample actions";
+  modal.appendChild(title);
+
+  const list = document.createElement("ul");
+  list.className = "project-list";
+  for (const s of samples) {
+    const li = document.createElement("li");
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    const t = document.createElement("div");
+    t.className = "title";
+    t.textContent = s.title;
+    const d = document.createElement("div");
+    d.className = "subtle";
+    d.textContent = s.description;
+    meta.appendChild(t);
+    meta.appendChild(d);
+    const actions = document.createElement("div");
+    // Load button: loads sample.code into the editor for editing
+    if (s.code) {
+      const loadBtn = document.createElement("button");
+      loadBtn.textContent = "Load";
+      loadBtn.className = "btn";
+      loadBtn.addEventListener("click", () => {
+        try {
+          if (typeof editor?.setValue === "function") {
+            editor.setValue(s.code);
+            appendConsoleLine("info", `Loaded sample into editor: ${s.title}`);
+          } else {
+            appendConsoleLine("warn", "Editor not available to load sample code.");
+          }
+        } catch (err) {
+          appendConsoleLine("error", `Failed to load sample code: ${err?.message || err}`);
+        }
+      });
+      actions.appendChild(loadBtn);
+    }
+
+    const applyBtn = document.createElement("button");
+    applyBtn.textContent = "Apply";
+    applyBtn.className = "btn-primary";
+    applyBtn.addEventListener("click", async () => {
+      try {
+        const ops = s.opsGenerator ? s.opsGenerator() : s.ops;
+        appendConsoleLine("info", `Applying sample: ${s.title}`);
+        // If sample has code, load it into the editor before applying so user sees it
+        if (s.code && typeof editor?.setValue === "function") {
+          editor.setValue(s.code);
+        }
+        if (!window.audiotool || typeof window.audiotool.apply !== "function") {
+          appendConsoleLine("warn", "No Audiotool connection available. Connect a project to apply sample actions.");
+          return;
+        }
+        const res = await window.audiotool.apply({ ops });
+        appendConsoleLine("ok", `Sample applied: ${s.title}`);
+        pushSessionActivity("info", `Applied sample: ${s.title}`);
+        // close modal
+        document.body.removeChild(overlay);
+      } catch (err) {
+        appendConsoleLine("error", `Failed to apply sample: ${err?.message || err}`);
+      }
+    });
+    actions.appendChild(applyBtn);
+    li.appendChild(meta);
+    li.appendChild(actions);
+    list.appendChild(li);
+  }
+  modal.appendChild(list);
+
+  const closeRow = document.createElement("div");
+  closeRow.className = "modal-actions";
+  const closeBtn = document.createElement("button");
+  closeBtn.textContent = "Close";
+  closeBtn.addEventListener("click", () => {
+    document.body.removeChild(overlay);
+  });
+  closeRow.appendChild(closeBtn);
+  modal.appendChild(closeRow);
+
+  overlay.appendChild(modal);
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) document.body.removeChild(overlay);
+  });
+
+  document.body.appendChild(overlay);
+  modal.focus && modal.focus();
+}
+
+if (samplesButton) {
+  samplesButton.addEventListener("click", () => openSamplesModal());
 }
 
 function parsePackageSpec(spec) {
@@ -1028,6 +1248,7 @@ async function processAudiotoolApplyRequest(request) {
     return;
   }
 
+
   try {
     const { project, ops } = validateApplyPayload(request?.payload);
     pushSessionActivity(
@@ -1110,8 +1331,8 @@ function createPreviewDocument(sourceCode, importMap) {
         margin: 0;
         padding: 16px;
         font-family: Inter, system-ui, -apple-system, sans-serif;
-        background: #f8fafc;
-        color: #0f172a;
+        background: #0a142b;
+        color: #E6EEF8;
       }
 
       #app {
@@ -1238,6 +1459,286 @@ function runCode() {
   pushSessionActivity("runtime", "Sandbox runtime refreshed.", packageLabel);
 }
 
+function createProjectListModal() {
+  // create modal DOM only once when requested
+  let overlay = document.getElementById("_project_list_overlay");
+  if (overlay) return overlay;
+
+  overlay = document.createElement("div");
+  overlay.id = "_project_list_overlay";
+  overlay.className = "modal-overlay";
+
+  const modal = document.createElement("div");
+  modal.className = "modal";
+  modal.innerHTML = `
+    <h3>Available Projects</h3>
+    <p class="subtle">Select a project to connect or copy its studio URL.</p>
+    <ul class="project-list" id="_project_list_items"></ul>
+    <div class="modal-actions">
+      <button id="_project_list_close" class="buttons">Close</button>
+    </div>
+  `;
+
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+
+  document.getElementById("_project_list_close").addEventListener("click", () => {
+    overlay.remove();
+  });
+
+  return overlay;
+}
+
+function showProjectList(items = []) {
+  const overlay = createProjectListModal();
+  const listEl = overlay.querySelector("#_project_list_items");
+  listEl.innerHTML = "";
+
+  if (!items || !items.length) {
+    const li = document.createElement("li");
+    li.textContent = "No projects found or you don't have permissions to list projects.";
+    listEl.appendChild(li);
+    return;
+  }
+
+  for (const item of items) {
+    // attempt to normalize fields from various response shapes
+    const name = item?.name || item?.projectId || item?.id || "";
+    let projectId = "";
+    if (typeof name === "string" && name.startsWith("projects/")) {
+      projectId = name.replace(/^projects\//, "");
+    } else if (typeof item?.projectId === "string") {
+      projectId = item.projectId;
+    } else if (typeof item?.id === "string") {
+      projectId = item.id;
+    }
+
+    const displayName = item?.displayName || item?.title || projectId || name;
+    const li = document.createElement("li");
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    meta.innerHTML = `<div class="title">${escapeHtml(displayName)}</div><div class="subtle">${escapeHtml(projectId)}</div>`;
+
+    const actions = document.createElement("div");
+    const connectBtn = document.createElement("button");
+    connectBtn.textContent = "Connect";
+    connectBtn.className = "buttons";
+    connectBtn.addEventListener("click", async () => {
+      try {
+        // if projectId is empty, try to extract UUID from other fields
+        let target = projectId;
+        if (!target) {
+          target = extractProjectUuid(item?.studioUrl || item?.url || item?.name || "");
+        }
+        if (!target) {
+          setAudiotoolStatus("Could not determine project ID for selection.", "error");
+          return;
+        }
+        // close modal
+        const overlayEl = document.getElementById("_project_list_overlay");
+        overlayEl?.remove();
+        // set input and connect
+        projectInput.value = target;
+        await connectProject(target);
+      } catch (err) {
+        const detail = toDisplayString(err);
+        setAudiotoolStatus(`Could not connect to project: ${detail}`, "error");
+        appendConsoleLine("error", detail);
+      }
+    });
+
+    const copyBtn = document.createElement("button");
+    copyBtn.textContent = "Copy ID";
+    copyBtn.className = "buttons";
+    copyBtn.addEventListener("click", async () => {
+      try {
+        const toCopy = projectId || item?.projectId || item?.id || item?.name || "";
+        await navigator.clipboard.writeText(toCopy);
+        setAudiotoolStatus("Project ID copied to clipboard.", "ok");
+      } catch (err) {
+        setAudiotoolStatus("Copy failed.", "warn");
+      }
+    });
+
+    actions.appendChild(connectBtn);
+    actions.appendChild(copyBtn);
+
+    li.appendChild(meta);
+    li.appendChild(actions);
+    listEl.appendChild(li);
+  }
+}
+
+listProjectsButton?.addEventListener("click", async () => {
+  queueAudiotoolTask(async () => {
+    try {
+      setAudiotoolStatus("Loading projects…", "warn");
+      const client = await ensureClient();
+      const service = client.api?.projectService || client.api?.projects || client.api;
+      if (!service) {
+        throw new Error("Audiotool project service not available.");
+      }
+
+      let response = null;
+      // try common RPC shapes
+      if (typeof service.listProjects === "function") {
+        response = await service.listProjects({ pageSize: 50 });
+      } else if (typeof service.searchProjects === "function") {
+        response = await service.searchProjects({ query: "", pageSize: 50 });
+      } else if (typeof service.list === "function") {
+        response = await service.list({ pageSize: 50 });
+      } else {
+        // fallback: try calling projectService.getProject with current project (will fail) -> but we should notify
+        throw new Error("Project listing method not found on client API.");
+      }
+
+      // normalize response to array
+      let items = [];
+      if (Array.isArray(response)) items = response;
+      else if (Array.isArray(response.projects)) items = response.projects;
+      else if (Array.isArray(response.items)) items = response.items;
+      else {
+        const found = Object.values(response || {}).find((v) => Array.isArray(v));
+        items = Array.isArray(found) ? found : [];
+      }
+
+      showProjectList(items);
+      setAudiotoolStatus(`Found ${items.length} project(s).`, "ok");
+    } catch (error) {
+      const detail = toDisplayString(error);
+      setAudiotoolStatus(`Could not list projects: ${detail}`, "error");
+      appendConsoleLine("error", detail);
+      // show empty modal with message
+      showProjectList([]);
+    }
+  }).catch((e) => {
+    appendConsoleLine("error", toDisplayString(e));
+  });
+});
+
+function createProjectModal() {
+  let overlay = document.getElementById("_create_project_overlay");
+  if (overlay) return overlay;
+
+  overlay = document.createElement("div");
+  overlay.id = "_create_project_overlay";
+  overlay.className = "modal-overlay";
+
+  const modal = document.createElement("div");
+  modal.className = "modal";
+  modal.innerHTML = `
+    <h3>Create Project</h3>
+    <label class="subtle">Display name</label>
+    <input id="_create_project_name" type="text" placeholder="My New Project" />
+    <label class="subtle">Description (optional)</label>
+    <input id="_create_project_description" type="text" placeholder="Short description" />
+    <div style="display:flex;align-items:center;gap:8px;margin-top:6px;">
+      <input id="_create_project_connect" type="checkbox" />
+      <label for="_create_project_connect" class="subtle">Connect after create</label>
+    </div>
+    <div class="modal-actions">
+      <button id="_create_project_cancel" class="buttons">Cancel</button>
+      <button id="_create_project_submit" class="buttons">Create</button>
+    </div>
+  `;
+
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+
+  document.getElementById("_create_project_cancel").addEventListener("click", () => {
+    overlay.remove();
+  });
+
+  return overlay;
+}
+
+function extractCreatedProjectId(response) {
+  // Try common response shapes: { project: { name: 'projects/<uuid>' } } or { name: 'projects/<uuid>' } or { id: '<uuid>' }
+  const maybe = response?.project || response;
+  let name = maybe?.name || maybe?.project?.name || maybe?.id || maybe?.projectId || maybe?.projectId;
+  if (!name && typeof response === 'string') {
+    name = response;
+  }
+  if (!name) return "";
+  // name may be 'projects/<uuid>' or just uuid
+  return String(name).replace(/^projects\//, "");
+}
+
+createProjectButton?.addEventListener("click", () => {
+  const overlay = createProjectModal();
+  const submit = overlay.querySelector("#_create_project_submit");
+  const cancel = overlay.querySelector("#_create_project_cancel");
+
+  const onSubmit = async () => {
+    const nameInput = overlay.querySelector("#_create_project_name");
+    const descInput = overlay.querySelector("#_create_project_description");
+    const connectAfter = overlay.querySelector("#_create_project_connect").checked;
+    const displayName = (nameInput.value || "").trim();
+    const description = (descInput.value || "").trim();
+
+    if (!displayName) {
+      setAudiotoolStatus("Project display name is required.", "warn");
+      return;
+    }
+
+    queueAudiotoolTask(async () => {
+      try {
+        setAudiotoolStatus("Creating project…", "warn");
+        const client = await ensureClient();
+        const service = client.api?.projectService || client.api?.projects || client.api;
+        if (!service) {
+          throw new Error("Audiotool project service not available.");
+        }
+
+        let response = null;
+        // try a few common creation shapes
+        if (typeof service.createProject === "function") {
+          // gRPC-like: createProject({ project: { displayName, description } })
+          response = await service.createProject({ project: { displayName, description } });
+        } else if (typeof service.create === "function") {
+          // generic create
+          response = await service.create({ displayName, description });
+        } else if (typeof service.createNewProject === "function") {
+          response = await service.createNewProject({ displayName, description });
+        } else if (typeof service.createProjectAsync === "function") {
+          response = await service.createProjectAsync({ displayName, description });
+        } else {
+          throw new Error("Project creation API not found on client.");
+        }
+
+        const projectId = extractCreatedProjectId(response);
+        if (!projectId) {
+          throw new Error("Could not determine created project id from server response.");
+        }
+
+        appendConsoleLine("system", `Created project: ${projectId}`);
+        setAudiotoolStatus(`Project created: ${projectId}`, "ok");
+
+        // optionally connect
+        if (connectAfter) {
+          try {
+            await connectProject(projectId);
+          } catch (err) {
+            appendConsoleLine("error", toDisplayString(err));
+            setAudiotoolStatus(`Created project but failed to connect: ${toDisplayString(err)}`, "warn");
+          }
+        } else {
+          // fill input with the created id so user can connect later
+          projectInput.value = projectId;
+        }
+
+        overlay.remove();
+      } catch (err) {
+        const detail = toDisplayString(err);
+        appendConsoleLine("error", detail);
+        setAudiotoolStatus(`Create failed: ${detail}`, "error");
+      }
+    });
+  };
+
+  submit.addEventListener("click", onSubmit, { once: true });
+});
+
 window.addEventListener("message", (event) => {
   if (event.source !== runtimeFrame.contentWindow) {
     return;
@@ -1296,7 +1797,13 @@ authButton.addEventListener("click", async () => {
   }
 
   if (loginStatus.loggedIn) {
-    loginStatus.logout();
+    try {
+      await loginStatus.logout();
+    } finally {
+      // reflect visual state immediately
+      authButton.classList.remove("signed-in");
+      setAudiotoolStatus("Logged out.", "warn");
+    }
     return;
   }
 
@@ -1307,6 +1814,18 @@ authButton.addEventListener("click", async () => {
     setAudiotoolStatus(`Login failed: ${toDisplayString(error)}`, "error");
   }
 });
+
+function updateAuthButtonVisual() {
+  try {
+    if (loginStatus && loginStatus.loggedIn) {
+      authButton.classList.add("signed-in");
+    } else {
+      authButton.classList.remove("signed-in");
+    }
+  } catch {
+    authButton.classList.remove("signed-in");
+  }
+}
 
 connectButton.addEventListener("click", () => {
   const project = projectInput.value.trim();
@@ -1369,6 +1888,7 @@ async function initializeAudiotoolAuth() {
       );
       await ensureClient();
       appendConsoleLine("system", "Audiotool client initialized.");
+      updateAuthButtonVisual();
     } else {
       setAudiotoolStatus("Logged out. Click Login to authorize this app.", "warn");
     }
@@ -1394,3 +1914,76 @@ window.addEventListener("beforeunload", () => {
     void activeDocument.stop();
   }
 });
+
+// --- Splitter logic: allow dragging between editor and preview panes ---
+(() => {
+  const panes = document.querySelector(".panes");
+  const splitter = document.getElementById("splitter");
+  const leftPane = document.querySelector(".editor-pane");
+  const rightPane = document.querySelector(".preview-pane");
+  if (!panes || !splitter || !leftPane || !rightPane) return;
+
+  let dragging = false;
+  let startX = 0;
+  let startLeftWidth = 0;
+
+  const minLeft = 300; // px
+  const minRight = 360; // px
+  const SPLITTER_SIZE = 8; // matches CSS
+
+  function clamp(v, a, b) {
+    return Math.max(a, Math.min(b, v));
+  }
+
+  function onPointerDown(e) {
+    e.preventDefault();
+    dragging = true;
+    startX = e.clientX ?? (e.touches && e.touches[0] && e.touches[0].clientX) ?? 0;
+    const rect = leftPane.getBoundingClientRect();
+    startLeftWidth = rect.width;
+    document.body.style.userSelect = "none";
+    splitter.classList.add("active");
+  }
+
+  function onPointerMove(e) {
+    if (!dragging) return;
+    const clientX = e.clientX ?? (e.touches && e.touches[0] && e.touches[0].clientX) ?? 0;
+    const dx = clientX - startX;
+    const parentRect = panes.getBoundingClientRect();
+    let nextLeft = startLeftWidth + dx;
+
+    // compute max left to ensure rightPane not smaller than minRight
+    const maxLeft = parentRect.width - minRight - SPLITTER_SIZE; // splitter width
+    nextLeft = clamp(nextLeft, minLeft, maxLeft);
+
+    // apply sizes by setting explicit pixel columns
+    panes.style.gridTemplateColumns = `${nextLeft}px ${SPLITTER_SIZE}px minmax(${minRight}px, 1fr)`;
+  }
+
+  function onPointerUp() {
+    if (!dragging) return;
+    dragging = false;
+    document.body.style.userSelect = "";
+    splitter.classList.remove("active");
+    // clean up inline style if user resizes to default-like proportions
+  }
+
+  // Use pointer events when available
+  splitter.addEventListener("pointerdown", onPointerDown);
+  window.addEventListener("pointermove", onPointerMove);
+  window.addEventListener("pointerup", onPointerUp);
+
+  // Fallback for mouse/touch
+  splitter.addEventListener("mousedown", onPointerDown);
+  window.addEventListener("mousemove", onPointerMove);
+  window.addEventListener("mouseup", onPointerUp);
+
+  splitter.addEventListener("touchstart", (e) => onPointerDown(e.touches ? e.touches[0] : e), { passive: true });
+  window.addEventListener("touchmove", (e) => onPointerMove(e.touches ? e.touches[0] : e), { passive: true });
+  window.addEventListener("touchend", onPointerUp);
+
+  // double-click resets to initial grid-template
+  splitter.addEventListener("dblclick", () => {
+    panes.style.gridTemplateColumns = `minmax(360px, 1fr) ${SPLITTER_SIZE}px minmax(520px, 1.35fr)`;
+  });
+})();

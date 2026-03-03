@@ -1,5 +1,129 @@
 :root {
+  /* Palette: Soft Slate (soft teal accent) */
+  --bg: #0b1220; /* page background */
+  --panel: #0f1724; /* card/pane background */
+  --panel-contrast: #08121a; /* slightly darker panels */
+  --border: #243247; /* panel borders */
+  --accent: #33b6a8; /* primary accent (teal) - tuned */
+  --accent-600: #238c7d; /* darker accent for buttons */
+  --muted: #9db5d0; /* secondary text (brighter for legibility) */
+  --text: #E6EEF8; /* primary text */
   color-scheme: dark;
+  --ui-font-size: 14px; /* runtime adjustable */
+}
+
+/* Theme overrides applied by adding a class to <html> */
+html.theme-light {
+  /* Warm Light palette (soft cream base to reduce cool glare) */
+  --bg: #fbf7f2; /* warm, paper-like page background */
+  --panel: #fffdf9; /* off-white panel surface */
+  --panel-contrast: #f7f4ef; /* slightly warmer contrast for inputs/cards */
+  --border: #efe6d6; /* warm border for subtle separation */
+  --accent: #8b5cf6; /* muted purple accent (keeps brand) */
+  --accent-600: #7c3aed;
+  --muted: #6b5f56; /* warmer muted text */
+  --text: #2b2b25; /* warmer/darker text for legibility on warm backgrounds */
+  color-scheme: light;
+}
+
+html.theme-dark {
+  /* mirror the soft-slate defaults (explicit for clarity) */
+  --bg: #0b1220;
+  --panel: #0f1724;
+  --panel-contrast: #08121a;
+  --border: #243247;
+  --accent: #33b6a8;
+  --accent-600: #238c7d;
+  --muted: #9db5d0;
+  --text: #E6EEF8;
+  color-scheme: dark;
+}
+
+html.theme-soft-slate {
+  /* same as default soft-slate palette */
+  --bg: #0b1220;
+  --panel: #0f1724;
+  --panel-contrast: #08121a;
+  --border: #243247;
+  --accent: #33b6a8;
+  --accent-600: #238c7d;
+  --muted: #9db5d0;
+  --text: #E6EEF8;
+  color-scheme: dark;
+}
+
+/* Solarized-like theme (soft warm-cool hybrid) */
+html.theme-solarized {
+  /* Adjusted Solarized -> tuned to be softer and more neutral to match Light */
+  --bg: #f6f7f3;
+  --panel: #ffffff;
+  --panel-contrast: #f4f6f1;
+  --border: #e7e8df;
+  --accent: #8b6dff; /* soft purple-teal hybrid */
+  --accent-600: #7a56e0;
+  --muted: #64707a;
+  --text: #0f2324;
+  color-scheme: light;
+}
+
+/* High-contrast theme for accessibility */
+html.theme-high-contrast {
+  --bg: #000000;
+  --panel: #0b0b0b;
+  --panel-contrast: #111111;
+  --border: #ffffff;
+  --accent: #ffd166; /* warm accent for high contrast */
+  --accent-600: #ffb84d;
+  --muted: #cfcfcf;
+  --text: #ffffff;
+  color-scheme: dark;
+}
+
+/* Accent family classes (toggle one on <html> to switch the brand accent at runtime) */
+html.accent-muted-purple {
+  --accent: #8b5cf6;
+  --accent-600: #7c3aed;
+  --accent-400: #a78bfa;
+  --accent-50: #fbf7ff;
+}
+
+html.accent-indigo {
+  --accent: #4f46e5;
+  --accent-600: #4338ca;
+  --accent-400: #6366f1;
+  --accent-50: #eef2ff;
+}
+
+html.accent-emerald {
+  --accent: #10b981;
+  --accent-600: #059669;
+  --accent-400: #34d399;
+  --accent-50: #ecfdf5;
+}
+
+/* Density helpers: comfortable vs compact */
+html.density-compact .control-card,
+html.density-compact .buttons button,
+html.density-compact .pane {
+  padding: 6px;
+}
+html.density-compact .control-card h2,
+html.density-compact .pane h2 {
+  font-size: 0.92rem;
+}
+
+html.density-comfortable .control-card,
+html.density-comfortable .pane {
+  padding: 14px;
+}
+
+/* Reduced motion: remove transitions and animation effects */
+html.reduced-motion *,
+html.reduced-motion *::before,
+html.reduced-motion *::after {
+  transition: none !important;
+  animation-duration: 0s !important;
+  animation-delay: 0s !important;
 }
 
 * {
@@ -9,27 +133,113 @@
 body {
   margin: 0;
   font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-  background: #0b1020;
-  color: #e2e8f0;
+  background: var(--bg);
+  color: var(--text);
+  font-size: var(--ui-font-size);
 }
 
 .layout {
   min-height: 100vh;
   display: grid;
-  grid-template-rows: auto 1fr auto;
-  gap: 16px;
-  padding: 16px;
+  /* topbar, toolbar, content, footer */
+  grid-template-rows: auto auto 1fr auto;
+  gap: 12px;
+  padding: 12px;
 }
 
 .toolbar {
-  background: #111a33;
-  border: 1px solid #25345f;
+  background: var(--panel);
+  border: 1px solid var(--border);
   border-radius: 10px;
   padding: 14px;
   display: grid;
   grid-template-columns: minmax(300px, 1fr) minmax(360px, 1.4fr);
   align-items: start;
   gap: 16px;
+}
+
+/* Topbar (page title) */
+
+.topbar {
+  background: linear-gradient(90deg, #071021, #0a1528 60%);
+  border: 1px solid rgba(37,52,95,0.5);
+  border-radius: 12px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center; /* center the inner container */
+  box-shadow: 0 6px 22px rgba(2,6,23,0.55);
+}
+
+.topbar-inner h1 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: var(--text);
+  letter-spacing: -0.01em;
+  font-weight: 700;
+}
+
+/* Topbar inner layout */
+.topbar-inner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto; /* keep inner content centered but left-align elements inside */
+  justify-content: flex-start; /* left align logo+title */
+}
+
+.logo {
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(51,182,168,0.10), rgba(47,145,134,0.04));
+  border: 1px solid rgba(51,182,168,0.12);
+  flex: 0 0 auto;
+}
+
+
+.topbar-title h1 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: var(--text);
+  letter-spacing: -0.01em;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.topbar-subtitle {
+  margin: 4px 0 0 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+/* Accent treatment for the first word */
+.title-accent {
+  color: var(--accent);
+  position: relative;
+  padding-right: 6px;
+}
+.title-accent::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -6px;
+  height: 4px;
+  width: 48%;
+  background: linear-gradient(90deg, var(--accent), var(--accent-600));
+  border-radius: 6px;
+  opacity: 0.95;
+}
+
+@media (max-width: 700px) {
+  .topbar-inner { gap: 8px; }
+  .topbar-subtitle { display: none; }
 }
 
 .title h1 {
@@ -44,9 +254,9 @@ body {
 }
 
 .control-card {
-  border: 1px solid #25345f;
+  border: 1px solid var(--border);
   border-radius: 8px;
-  background: #0d1730;
+  background: var(--panel);
   padding: 10px;
   display: grid;
   gap: 8px;
@@ -60,24 +270,24 @@ body {
 
 .subtle {
   margin: 0;
-  color: #8ea3d2;
+  color: var(--muted);
   font-size: 0.82rem;
 }
 
 .subtle code {
-  background: #0a142b;
-  border: 1px solid #25345f;
+  background: var(--panel-contrast);
+  border: 1px solid var(--border);
   border-radius: 5px;
   padding: 2px 6px;
-  color: #d7e4ff;
+  color: var(--text);
 }
 
 .status-line {
   margin: 2px 0 0;
   padding: 8px;
   border-radius: 8px;
-  border: 1px solid #25345f;
-  background: #0a142b;
+  border: 1px solid var(--border);
+  background: var(--panel-contrast);
   color: #b8c9ef;
   font-size: 0.88rem;
 }
@@ -104,9 +314,9 @@ body {
 
 .control-card input {
   width: 100%;
-  border: 1px solid #334776;
-  background: #0a142b;
-  color: #e2e8f0;
+  border: 1px solid var(--border);
+  background: var(--panel-contrast);
+  color: var(--text);
   border-radius: 8px;
   padding: 10px 12px;
   font-family: inherit;
@@ -119,13 +329,26 @@ body {
 }
 
 .buttons button {
-  border: 1px solid #3f5fa6;
-  background: #1d3a78;
-  color: #f8fafc;
+  border: 1px solid rgba(47,145,134,0.08);
+  background: transparent;
+  color: var(--text);
   border-radius: 8px;
   padding: 9px 14px;
   font-weight: 600;
   cursor: pointer;
+  transition: background 120ms ease, transform 80ms ease, box-shadow 120ms ease;
+}
+
+/* Signed-in state for auth button */
+.buttons button.signed-in {
+  background: linear-gradient(180deg, var(--accent), var(--accent-600));
+  color: #ffffff;
+  border-color: transparent;
+  box-shadow: 0 8px 22px rgba(33,115,103,0.14);
+}
+
+.buttons button.signed-in:hover {
+  background: var(--accent-600);
 }
 
 .buttons button:disabled {
@@ -134,19 +357,110 @@ body {
 }
 
 .buttons button:hover {
-  background: #234996;
+  background: rgba(51,182,168,0.06);
+  transform: translateY(-1px);
+}
+
+/* Primary buttons (Run, Connect) */
+#run-btn,
+#connect-btn {
+  background: var(--accent);
+  color: #ffffff;
+  border-color: transparent;
+  box-shadow: 0 6px 18px rgba(33,115,103,0.12);
+}
+
+#run-btn:hover,
+#connect-btn:hover {
+  background: var(--accent-600);
+  box-shadow: 0 10px 26px rgba(33,115,103,0.14);
+}
+
+#run-btn:active, #connect-btn:active {
+  transform: translateY(0);
+}
+
+/* Button icon spacing */
+.btn-icon {
+  margin-right: 8px;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+/* Secondary filled style (stronger than outline, but below primary) */
+.btn-secondary {
+  background: linear-gradient(180deg, rgba(51,182,168,0.12), rgba(51,182,168,0.08));
+  color: var(--text);
+  border-color: rgba(51,182,168,0.12);
+}
+
+.btn-secondary:hover {
+  background: linear-gradient(180deg, rgba(51,182,168,0.18), rgba(51,182,168,0.12));
+  color: var(--text);
+}
+
+/* Secondary action buttons: list/create/open/disconnect */
+#list-projects-btn,
+#create-project-btn,
+#open-project-btn,
+#disconnect-btn {
+  background: rgba(51,182,168,0.06);
+  border-color: rgba(51,182,168,0.10);
+  color: var(--text);
+}
+
+#list-projects-btn:hover,
+#create-project-btn:hover,
+#open-project-btn:hover,
+#disconnect-btn:hover {
+  background: rgba(51,182,168,0.12);
+  border-color: rgba(51,182,168,0.18);
+}
+
+#list-projects-btn:disabled,
+#create-project-btn:disabled,
+#open-project-btn:disabled,
+#disconnect-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .panes {
   display: grid;
-  grid-template-columns: minmax(360px, 1fr) minmax(520px, 1.35fr);
-  gap: 16px;
+  /* left pane (editor), splitter, right pane (preview) */
+  grid-template-columns: minmax(360px, 1fr) 8px minmax(520px, 1.35fr);
+  gap: 8px; /* reduced gap for tighter layout */
   min-height: 580px;
 }
 
+/* Splitter between panes */
+.splitter {
+  width: 8px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.03), transparent 30%);
+  cursor: col-resize;
+  border-radius: 6px;
+  margin: 0;
+  align-self: stretch;
+  justify-self: center;
+  z-index: 50;
+  transition: background 120ms ease;
+}
+.splitter:hover,
+.splitter:focus {
+  background: linear-gradient(90deg, rgba(51,182,168,0.12), transparent 30%);
+  outline: none;
+}
+
+/* Improve touch target */
+@media (pointer: coarse) {
+  .splitter {
+    width: 14px;
+  }
+}
+
 .pane {
-  background: #111a33;
-  border: 1px solid #25345f;
+  background: var(--panel);
+  border: 1px solid var(--border);
   border-radius: 10px;
   padding: 12px;
   display: flex;
@@ -233,23 +547,41 @@ body {
   overflow: hidden;
 }
 
+/* Ensure editor container shows the panel-contrast background while Monaco paints inside */
+#editor {
+  background: var(--panel-contrast);
+}
+
 .controls-under-editor {
   margin-top: 2px;
 }
 
 #project-preview {
   width: 100%;
-  min-height: 340px;
+  height: 100%;
+  flex: 1 1 auto;
+  min-height: 0; /* allow flex parent to control height */
   border: 1px solid #25345f;
   border-radius: 8px;
   background: #0a142b;
 }
 
+/* Ensure preview pane lets its children grow/shrink correctly */
+.preview-pane {
+  display: flex;
+  flex-direction: column;
+  min-height: 0; /* important so flex children can shrink */
+}
+
 .console-section {
-  background: #111a33;
-  border: 1px solid #25345f;
+  /* Match pane/card styling so Console and Session Info feel like panels */
+  background: var(--panel);
+  border: 1px solid var(--border);
   border-radius: 10px;
   padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .console-section summary {
@@ -280,10 +612,10 @@ body {
   max-height: 220px;
   overflow: auto;
   white-space: pre-wrap;
-  background: #0a142b;
-  border: 1px solid #25345f;
+  background: var(--panel-contrast);
+  border: 1px solid var(--border);
   border-radius: 8px;
-  color: #d8e3ff;
+  color: var(--text);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 0.85rem;
   line-height: 1.45;
@@ -305,4 +637,64 @@ body {
   #project-preview {
     min-height: 320px;
   }
+}
+
+/* Modal for listing projects */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(2,6,23,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1200;
+}
+.modal {
+  width: min(880px, 96%);
+  max-height: 80vh;
+  overflow: auto;
+  background: #071126;
+  border: 1px solid #25345f;
+  border-radius: 10px;
+  padding: 14px;
+  color: #dbe7ff;
+  box-shadow: 0 8px 40px rgba(2,6,23,0.6);
+}
+.modal h3 {
+  margin: 0 0 8px 0;
+}
+.project-list {
+  list-style: none;
+  margin: 8px 0 0 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.project-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px;
+  border-radius: 8px;
+  background: #07162a;
+  border: 1px solid #1f355a;
+}
+.project-list .meta {
+  display: grid;
+  gap: 2px;
+}
+.project-list .meta .title {
+  font-weight: 700;
+  color: #e6f0ff;
+}
+.project-list .meta .subtle {
+  color: #8ea3d2;
+  font-size: 0.85rem;
+}
+.modal .modal-actions {
+  margin-top: 10px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
