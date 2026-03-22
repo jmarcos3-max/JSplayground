@@ -16,14 +16,18 @@
 }
 
 html.font-size-small {
+  /* Shrink global rem scale slightly */
+  font-size: 14px;
   --ui-font-size: 12px;
 }
 
 html.font-size-medium {
+  font-size: 16px;
   --ui-font-size: 14px;
 }
 
 html.font-size-large {
+  font-size: 18px;
   --ui-font-size: 16px;
 }
 
@@ -565,12 +569,13 @@ html.theme-light .pane h2 {
 
 .status-line {
   margin: 2px 0 0;
-  padding: 8px;
+  padding: 8px 10px;
   border-radius: 8px;
   border: 1px solid var(--border);
   background: var(--panel-contrast);
   color: var(--text);
-  font-size: 0.88rem;
+  font-size: 0.9rem;
+  font-weight: 600;
 }
 
 html.theme-light .status-line {
@@ -579,18 +584,42 @@ html.theme-light .status-line {
 }
 
 .status-line[data-state="ok"] {
-  border-color: #20613f;
-  color: #8cf0ba;
+  border-color: #22c55e;
+  background: #16a34a;
+  color: #ffffff;
 }
 
 .status-line[data-state="warn"] {
-  border-color: #69510f;
-  color: #f8d681;
+  border-color: #eab308;
+  background: #eab308;
+  color: #0f172a;
 }
 
 .status-line[data-state="error"] {
-  border-color: #7d2a2a;
-  color: #ffb0b0;
+  border-color: #ef4444;
+  background: #ef4444;
+  color: #ffffff;
+}
+
+/* Soften but keep bright status colors in light theme specifically */
+/* Light theme: keep bright backgrounds but always use dark text for readability */
+html.theme-light .status-line {
+  color: #111827;
+}
+
+html.theme-light .status-line[data-state="ok"] {
+  border-color: #16a34a;
+  background: #bbf7d0;
+}
+
+html.theme-light .status-line[data-state="warn"] {
+  border-color: #eab308;
+  background: #fef3c7;
+}
+
+html.theme-light .status-line[data-state="error"] {
+  border-color: #ef4444;
+  background: #fee2e2;
 }
 
 .control-card label {

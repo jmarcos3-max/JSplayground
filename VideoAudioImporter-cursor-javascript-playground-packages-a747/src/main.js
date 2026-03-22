@@ -63,7 +63,9 @@ const consoleOutput = document.getElementById("console-output");
 
 const THEME_KEY = "jsplayground-theme";
 const ACCENT_KEY = "jsplayground-accent";
-const FONT_SIZE_KEY = "jsplayground-font-size";
+// Keep existing key for editor font size so previous preferences still apply there.
+const EDITOR_FONT_SIZE_KEY = "jsplayground-font-size";
+const PAGE_FONT_SIZE_KEY = "jsplayground-page-font-size";
 
 const THEME_OPTIONS = [
   { id: "light", label: "Light" },
@@ -123,18 +125,13 @@ function applyAccent(accentId) {
   } catch (_) {}
 }
 
-function applyFontSize(sizeId) {
+function applyPageFontSize(sizeId) {
   const html = document.documentElement;
   html.classList.remove("font-size-small", "font-size-medium", "font-size-large");
   const opt = FONT_SIZE_OPTIONS.find((o) => o.id === sizeId) || FONT_SIZE_OPTIONS[1];
   html.classList.add(`font-size-${opt.id}`);
   try {
-    localStorage.setItem(FONT_SIZE_KEY, opt.id);
-  } catch (_) {}
-  try {
-    if (typeof monaco !== "undefined" && monaco.editor && typeof editor !== "undefined") {
-      editor.updateOptions({ fontSize: opt.px });
-    }
+    localStorage.setItem(PAGE_FONT_SIZE_KEY, opt.id);
   } catch (_) {}
 }
 
@@ -152,17 +149,17 @@ function initTheme() {
     if (savedAccent && validAccents.includes(savedAccent)) {
       applyAccent(savedAccent);
     }
-    const savedFontSize = localStorage.getItem(FONT_SIZE_KEY);
+    const savedPageFontSize = localStorage.getItem(PAGE_FONT_SIZE_KEY);
     const validSizes = FONT_SIZE_OPTIONS.map((o) => o.id);
-    if (savedFontSize && validSizes.includes(savedFontSize)) {
-      applyFontSize(savedFontSize);
+    if (savedPageFontSize && validSizes.includes(savedPageFontSize)) {
+      applyPageFontSize(savedPageFontSize);
     } else {
-      applyFontSize("medium");
+      applyPageFontSize("medium");
     }
     return;
   } catch (_) {}
   applyTheme("light");
-  applyFontSize("medium");
+  applyPageFontSize("medium");
 }
 
 initTheme();
@@ -170,27 +167,19 @@ initTheme();
 function initAppearanceDropdown() {
   const appearanceBtn = document.getElementById("appearance-btn");
   const dropdown = document.getElementById("appearance-dropdown");
-  const themeOptionsEl = document.getElementById("appearance-theme-options");
-  const accentOptionsEl = document.getElementById("appearance-accent-options");
-  const fontSizeOptionsEl = document.getElementById("appearance-font-size-options");
-  if (!appearanceBtn || !dropdown || !themeOptionsEl || !accentOptionsEl || !fontSizeOptionsEl) return;
+  if (!appearanceBtn || !dropdown) return;
 
-  function renderOptions() {
-    const currentTheme = localStorage.getItem(THEME_KEY) || "light";
-    const currentAccent = localStorage.getItem(ACCENT_KEY) || "default";
-    const currentFontSize = localStorage.getItem(FONT_SIZE_KEY) || "medium";
-    themeOptionsEl.innerHTML = THEME_OPTIONS.map(
-      (opt) =>
-        `<button type="button" class="appearance-option ${opt.id === currentTheme ? "active" : ""}" data-appearance="theme" data-value="${opt.id}">${opt.label}</button>`
-    ).join("");
-    accentOptionsEl.innerHTML = ACCENT_OPTIONS.map(
-      (opt) =>
-        `<button type="button" class="appearance-option ${opt.id === currentAccent ? "active" : ""}" data-appearance="accent" data-value="${opt.id}">${opt.label}</button>`
-    ).join("");
-    fontSizeOptionsEl.innerHTML = FONT_SIZE_OPTIONS.map(
-      (opt) =>
-        `<button type="button" class="appearance-option ${opt.id === currentFontSize ? "active" : ""}" data-appearance="font-size" data-value="${opt.id}">${opt.label}</button>`
-    ).join("");
+  // Core handler for all appearance choices.
+  function applyAppearance(kind, value) {
+    if (kind === "theme") {
+      applyTheme(value);
+    } else if (kind === "accent") {
+      applyAccent(value);
+    } else if (kind === "editor-font-size") {
+      applyEditorFontSize(value);
+    } else if (kind === "ui-font-size") {
+      applyPageFontSize(value);
+    }
   }
 
   appearanceBtn.addEventListener("click", (e) => {
@@ -198,22 +187,24 @@ function initAppearanceDropdown() {
     dropdown.hidden = !dropdown.hidden;
     const isOpen = !dropdown.hidden;
     appearanceBtn.setAttribute("aria-expanded", String(isOpen));
-    if (isOpen) renderOptions();
   });
 
+  // Handle clicks on any `.appearance-option` using data attributes, and update active state.
   dropdown.addEventListener("click", (e) => {
     const btn = e.target.closest(".appearance-option");
     if (!btn) return;
     const kind = btn.getAttribute("data-appearance");
     const value = btn.getAttribute("data-value");
-    if (kind === "theme") {
-      applyTheme(value);
-    } else if (kind === "accent") {
-      applyAccent(value);
-    } else if (kind === "font-size") {
-      applyFontSize(value);
-    }
-    renderOptions();
+    if (!kind || !value) return;
+    applyAppearance(kind, value);
+
+    // Update active state indicator for the group.
+    const groupButtons = dropdown.querySelectorAll(
+      `.appearance-option[data-appearance="${kind}"]`,
+    );
+    groupButtons.forEach((el) => {
+      el.classList.toggle("active", el === btn);
+    });
   });
 
   document.addEventListener("click", (e) => {
@@ -303,7 +294,7 @@ const initialThemeId =
 const initialEditorTheme = initialThemeId;
 
 const initialFontSize =
-  (FONT_SIZE_OPTIONS.find((o) => o.id === (localStorage.getItem(FONT_SIZE_KEY) || "medium")) || FONT_SIZE_OPTIONS[1]).px;
+  (FONT_SIZE_OPTIONS.find((o) => o.id === (localStorage.getItem(EDITOR_FONT_SIZE_KEY) || "medium")) || FONT_SIZE_OPTIONS[1]).px;
 
 const editor = monaco.editor.create(editorElement, {
   value: defaultSource,
@@ -314,6 +305,23 @@ const editor = monaco.editor.create(editorElement, {
   fontSize: initialFontSize,
   tabSize: 2,
 });
+
+// Expose editor instance for simple global handlers if needed.
+try {
+  window.editor = editor;
+} catch (_) {}
+
+function applyEditorFontSize(sizeId) {
+  const opt = FONT_SIZE_OPTIONS.find((o) => o.id === sizeId) || FONT_SIZE_OPTIONS[1];
+  try {
+    localStorage.setItem(EDITOR_FONT_SIZE_KEY, opt.id);
+  } catch (_) {}
+  try {
+    if (typeof monaco !== "undefined" && monaco.editor && typeof editor !== "undefined") {
+      editor.updateOptions({ fontSize: opt.px });
+    }
+  } catch (_) {}
+}
 
 // Appearance controls (removed) — keep editor themes defined above but do not wire runtime controls.
 
