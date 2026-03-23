@@ -178,6 +178,11 @@ html.theme-light body {
   padding: 12px;
 }
 
+/* Let the main workbench row shrink so inner flex/grid can scroll / fill correctly */
+.layout > main {
+  min-height: 0;
+}
+
 .layout > header {
   margin: 0;
 }
@@ -754,10 +759,10 @@ html.theme-light .control-card input:focus {
 
 .panes {
   display: grid;
-  /* left pane (editor), splitter, right pane (preview) */
-  grid-template-columns: minmax(360px, 1fr) 8px minmax(520px, 1.35fr);
+  /* left pane (editor), splitter, right pane (preview) — preview gets more default width */
+  grid-template-columns: minmax(320px, 0.92fr) 8px minmax(400px, 1.78fr);
   gap: 8px; /* reduced gap for tighter layout */
-  min-height: 580px;
+  min-height: min(720px, calc(100vh - 200px));
 }
 
 /* Splitter between panes */
@@ -889,18 +894,186 @@ html.theme-light .preview-pane {
   line-height: 1.35;
 }
 
-#editor {
+.editor-workbench {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  gap: 0;
+}
+
+.editor-tab-bar {
+  margin-bottom: 8px;
+}
+
+/* HTML + CSS + JS tabs, then SDK immediately after JavaScript (same 4px rhythm) */
+.editor-tab-inline-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.editor-tab-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+
+/* Matches .editor-tab; .active when SDK preview surface is shown */
+.sdk-view-toggle,
+.note-editor-open-btn {
+  flex: 0 0 auto;
+  align-self: center;
+}
+
+.note-editor-open-btn[aria-pressed="true"] {
+  background: rgba(51, 182, 168, 0.24);
+  border-color: rgba(51, 182, 168, 0.72);
+  color: var(--text);
+  box-shadow: 0 0 0 1px rgba(51, 182, 168, 0.35) inset;
+}
+
+html.theme-light .note-editor-open-btn[aria-pressed="true"] {
+  background: rgba(124, 58, 237, 0.14);
+  border-color: rgba(124, 58, 237, 0.52);
+  box-shadow: 0 0 0 1px rgba(124, 58, 237, 0.2) inset;
+}
+
+.editor-tab {
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--panel-contrast);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.editor-tab:hover {
+  border-color: rgba(51, 182, 168, 0.35);
+}
+
+.editor-tab.active {
+  background: rgba(51, 182, 168, 0.12);
+  border-color: rgba(51, 182, 168, 0.45);
+  color: var(--text);
+}
+
+html.theme-light .editor-tab.active {
+  background: rgba(124, 58, 237, 0.1);
+  border-color: rgba(124, 58, 237, 0.28);
+}
+
+.editor-tab-panels {
   flex: 1;
   min-height: 560px;
+  position: relative;
   border: 1px solid var(--border);
   border-radius: 10px;
   overflow: hidden;
   background: var(--preview-bg);
 }
 
-html.theme-light #editor {
+html.theme-light .editor-tab-panels {
   border-color: rgba(124, 58, 237, 0.1);
   box-shadow: 0 1px 4px rgba(0,0,0,0.04) inset;
+}
+
+.editor-panel {
+  position: absolute;
+  inset: 0;
+  min-height: 560px;
+}
+
+.editor-panel[hidden] {
+  display: none !important;
+}
+
+.preview-frame {
+  width: 100%;
+  flex: 1 1 0;
+  min-height: 280px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+html.theme-light .preview-frame {
+  border-color: rgba(124, 58, 237, 0.1);
+}
+
+.preview-live-wrap {
+  margin-top: 4px;
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.preview-subheading {
+  margin: 10px 0 0 0;
+  font-size: 0.95rem;
+  color: var(--heading);
+}
+
+.preview-hint-live {
+  margin-bottom: 4px;
+}
+
+.preview-surface-indicator {
+  margin: 0 0 8px 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--panel-contrast);
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--heading);
+}
+
+.preview-pane--sdk .preview-surface-indicator {
+  border-color: rgba(51, 182, 168, 0.35);
+}
+
+html.theme-light .preview-pane--sdk .preview-surface-indicator {
+  border-color: rgba(124, 58, 237, 0.22);
+}
+
+.preview-stack--live,
+.preview-stack--sdk {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+}
+
+.preview-pane--live .preview-stack--live {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.preview-pane--live .preview-stack--sdk {
+  display: none !important;
+}
+
+.preview-pane--sdk .preview-stack--live {
+  display: none !important;
+}
+
+.preview-pane--sdk .preview-stack--sdk {
+  display: flex !important;
+  flex: 1 1 auto;
+  min-height: 280px;
+}
+
+.preview-pane--sdk .preview-panel {
+  flex: 1 1 auto;
+  min-height: 240px;
 }
 
 .controls-under-editor {
@@ -1182,12 +1355,164 @@ html.theme-light .modal {
 .modal h3 {
   margin: 0 0 8px 0;
 }
+
+.modal-samples .samples-modal-subtitle {
+  margin: 0 0 10px 0;
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+.samples-category-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.samples-category-btn {
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--panel-contrast);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.samples-category-btn:hover {
+  border-color: rgba(51, 182, 168, 0.35);
+}
+
+.samples-category-btn.active {
+  background: rgba(51, 182, 168, 0.12);
+  border-color: rgba(51, 182, 168, 0.45);
+}
+
+html.theme-light .samples-category-btn.active {
+  background: rgba(124, 58, 237, 0.1);
+  border-color: rgba(124, 58, 237, 0.28);
+}
+
+.samples-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.samples-title-row .title {
+  margin: 0;
+}
+
+.samples-cat-pill {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+
+.samples-modal-list {
+  margin-top: 4px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.project-list-search-wrap {
+  margin: 8px 0 10px 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--panel-contrast);
+}
+
+.project-list-search-label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+
+.project-list-hint {
+  margin: 0 0 8px 0;
+}
+
+.project-list-search-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.project-list-search-icon {
+  position: absolute;
+  left: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  color: var(--muted);
+}
+
+.project-list-search {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 40px;
+  padding: 8px 10px 8px 38px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.95rem;
+}
+
+.project-list-search::placeholder {
+  color: var(--muted);
+}
+
+.project-list-search:focus {
+  outline: 2px solid var(--accent, #38bdf8);
+  outline-offset: 1px;
+}
+
+.project-list li.project-list-empty-match {
+  justify-content: center;
+  font-style: italic;
+  color: var(--muted);
+}
+
 .project-list {
   list-style: none;
   margin: 8px 0 0 0;
   padding: 0;
   display: grid;
   gap: 8px;
+  /* Show ~5 rows at once; scroll for the rest (search still filters the full list). */
+  --project-list-gap: 8px;
+  --project-list-row-estimate: 64px;
+  max-height: calc(5 * var(--project-list-row-estimate) + 4 * var(--project-list-gap));
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-gutter: stable;
+  -webkit-overflow-scrolling: touch;
 }
 .project-list li {
   display: flex;

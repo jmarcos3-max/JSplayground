@@ -215,7 +215,88 @@
       <main class="panes">
         <section class="pane editor-pane">
           <h2>Editor</h2>
-          <div id="editor"></div>
+          <div class="editor-workbench">
+            <div class="editor-tab-bar">
+              <div class="editor-tab-inline-group">
+                <div class="editor-tab-buttons" role="tablist" aria-label="Editor source">
+                  <button
+                    type="button"
+                    class="editor-tab"
+                    role="tab"
+                    id="tab-html"
+                    aria-selected="false"
+                    aria-controls="editor-html"
+                    data-editor-tab="html"
+                  >
+                    HTML
+                  </button>
+                  <button
+                    type="button"
+                    class="editor-tab"
+                    role="tab"
+                    id="tab-css"
+                    aria-selected="false"
+                    aria-controls="editor-css"
+                    data-editor-tab="css"
+                  >
+                    CSS
+                  </button>
+                  <button
+                    type="button"
+                    class="editor-tab active"
+                    role="tab"
+                    id="tab-js"
+                    aria-selected="true"
+                    aria-controls="editor-js"
+                    data-editor-tab="js"
+                  >
+                    JavaScript
+                  </button>
+                </div>
+                <button
+                  id="sdk-view-toggle"
+                  type="button"
+                  class="editor-tab sdk-view-toggle"
+                  aria-pressed="false"
+                  aria-label="Show SDK simulation instead of live preview"
+                  title="SDK simulation (Tone Matrix &amp; apply output)"
+                >
+                  SDK
+                </button>
+                <button
+                  id="note-editor-open"
+                  type="button"
+                  class="editor-tab note-editor-open-btn"
+                  aria-label="Load note editor sample"
+                  title="Load the piano-roll note editor into HTML, CSS, and JavaScript"
+                >
+                  Note editor
+                </button>
+              </div>
+            </div>
+            <div class="editor-tab-panels">
+              <div
+                id="editor-html"
+                class="editor-panel"
+                role="tabpanel"
+                aria-labelledby="tab-html"
+                hidden
+              ></div>
+              <div
+                id="editor-css"
+                class="editor-panel"
+                role="tabpanel"
+                aria-labelledby="tab-css"
+                hidden
+              ></div>
+              <div
+                id="editor-js"
+                class="editor-panel active"
+                role="tabpanel"
+                aria-labelledby="tab-js"
+              ></div>
+            </div>
+          </div>
 
           <section class="control-card controls-under-editor">
             <h2>Playground controls</h2>
@@ -239,21 +320,42 @@
 
         <div id="splitter" class="splitter" role="separator" aria-orientation="vertical" tabindex="0" aria-label="Resize editor and preview"></div>
 
-        <section class="pane preview-pane">
+        <section id="preview-pane" class="pane preview-pane preview-pane--live" data-preview-surface="live">
           <h2>Application preview</h2>
-          <p class="subtle preview-hint">
-            This pane shows the sandboxed JavaScript app state and apply activity.
-            The full Audiotool Studio opens in a separate tab.
+          <p id="preview-surface-indicator" class="preview-surface-indicator" role="status" aria-live="polite">
+            Live preview · HTML, CSS, and JavaScript
           </p>
-          <div class="buttons preview-buttons">
-            <button id="reload-preview-btn" type="button" disabled>
-              Refresh Data
-            </button>
+
+          <div id="preview-live-stack" class="preview-stack preview-stack--live">
+            <p class="subtle preview-hint preview-hint-live">
+              <strong>Live preview</strong> — HTML, CSS, and JavaScript from the editor run together in a sandboxed
+              iframe. Console output appears in the Console section below.
+            </p>
+            <div class="preview-live-wrap">
+              <iframe
+                id="preview-frame"
+                class="preview-frame"
+                title="Live preview"
+                sandbox="allow-scripts allow-same-origin allow-forms allow-modals"
+              ></iframe>
+            </div>
           </div>
-          <p id="preview-mode-label" class="subtle preview-mode-label">
-            Session mode: waiting for project connection.
-          </p>
-          <div id="preview-panel" class="preview-panel" role="region" aria-label="Preview panel"></div>
+
+          <div id="preview-sdk-stack" class="preview-stack preview-stack--sdk">
+            <h3 class="preview-subheading">Audiotool simulation</h3>
+            <p class="subtle preview-hint">
+              Visualizes SDK actions from your code (e.g. Tone Matrix). The full Audiotool Studio opens in a separate tab.
+            </p>
+            <div class="buttons preview-buttons">
+              <button id="reload-preview-btn" type="button" disabled>
+                Refresh Data
+              </button>
+            </div>
+            <p id="preview-mode-label" class="subtle preview-mode-label">
+              Session mode: waiting for project connection.
+            </p>
+            <div id="preview-panel" class="preview-panel" role="region" aria-label="SDK simulation"></div>
+          </div>
         </section>
       </main>
 

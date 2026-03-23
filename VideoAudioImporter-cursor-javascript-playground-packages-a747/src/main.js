@@ -5,6 +5,9 @@ import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
 import tsWorker from "monaco-editor/esm/vs/language/typescript/ts.worker?worker";
 import { createAudiotoolClient, getLoginStatus } from "@audiotool/nexus";
 import { PreviewPanel } from "./PreviewPanel.js";
+import noteEditorSampleHtml from "./samples/note-editor/sample.html?raw";
+import noteEditorSampleCss from "./samples/note-editor/sample.css?raw";
+import noteEditorSampleJs from "./samples/note-editor/sample.js?raw";
 
 self.MonacoEnvironment = {
   getWorker(_moduleId, label) {
@@ -19,8 +22,33 @@ self.MonacoEnvironment = {
 const defaultPackages = "dayjs,lodash-es";
 const audiotoolClientId = "379f8d67-b211-43b2-8a9d-9553aa8aad32";
 const audiotoolScope = "project:write";
+
+const defaultHtml = `<div class="demo">
+  <h1>JS Playground</h1>
+  <p id="demo-line">Edit HTML, CSS, and JavaScript, then click Run.</p>
+</div>
+`;
+
+const defaultCss = `body {
+  font-family: system-ui, sans-serif;
+  margin: 0;
+  padding: 1rem;
+  background: #0f172a;
+  color: #e2e8f0;
+}
+.demo h1 {
+  color: #38bdf8;
+  margin: 0 0 0.5rem;
+}
+`;
+
 const defaultSource = `import dayjs from "dayjs";
 import { startCase } from "lodash-es";
+
+const demoLine = document.getElementById("demo-line");
+if (demoLine) {
+  demoLine.textContent = \`\${startCase("monaco sandbox is running")} · \${dayjs().format("YYYY-MM-DD HH:mm:ss")}\`;
+}
 
 console.log(startCase("monaco sandbox is running"));
 console.log("Current time:", dayjs().format("YYYY-MM-DD HH:mm:ss"));
@@ -42,7 +70,145 @@ try {
 }
 `;
 
-const editorElement = document.getElementById("editor");
+/**
+ * Older pages used a single `#editor` div. The app now expects tabbed `#editor-html` /
+ * `#editor-css` / `#editor-js`. Inject the workbench so Monaco and tabs work without
+ * hand-editing every deployment HTML.
+ */
+function injectEditorWorkbenchIfNeeded() {
+  if (document.getElementById("editor-html")) return;
+  const mount = document.getElementById("editor");
+  if (!mount) return;
+  mount.classList.add("editor-workbench");
+  mount.innerHTML = `
+    <div class="editor-tab-bar">
+      <div class="editor-tab-inline-group">
+        <div class="editor-tab-buttons" role="tablist" aria-label="Editor source">
+          <button type="button" class="editor-tab" role="tab" id="tab-html" aria-selected="false" aria-controls="editor-html" data-editor-tab="html">HTML</button>
+          <button type="button" class="editor-tab" role="tab" id="tab-css" aria-selected="false" aria-controls="editor-css" data-editor-tab="css">CSS</button>
+          <button type="button" class="editor-tab active" role="tab" id="tab-js" aria-selected="true" aria-controls="editor-js" data-editor-tab="js">JavaScript</button>
+        </div>
+        <button type="button" id="sdk-view-toggle" class="editor-tab sdk-view-toggle" aria-pressed="false" aria-label="Show SDK simulation instead of live preview" title="SDK simulation (Tone Matrix & apply output)">SDK</button>
+        <button type="button" id="note-editor-open" class="editor-tab note-editor-open-btn" aria-label="Load note editor sample" title="Load the piano-roll note editor into HTML, CSS, and JavaScript">Note editor</button>
+      </div>
+    </div>
+    <div class="editor-tab-panels">
+      <div id="editor-html" class="editor-panel" role="tabpanel" aria-labelledby="tab-html" hidden></div>
+      <div id="editor-css" class="editor-panel" role="tabpanel" aria-labelledby="tab-css" hidden></div>
+      <div id="editor-js" class="editor-panel active" role="tabpanel" aria-labelledby="tab-js"></div>
+    </div>
+  `;
+}
+
+/** Legacy preview iframe used `#project-preview`; live preview expects `#preview-frame`. */
+function ensurePreviewFrameAlias() {
+  const next = document.getElementById("preview-frame");
+  if (next) return;
+  const legacy = document.getElementById("project-preview");
+  if (!legacy) return;
+  legacy.id = "preview-frame";
+  legacy.classList.add("preview-frame");
+  legacy.setAttribute("title", "Live preview");
+  legacy.setAttribute(
+    "sandbox",
+    "allow-scripts allow-same-origin allow-forms allow-modals",
+  );
+}
+
+/** Audiotool simulation needs `#preview-panel`; insert if the page only had an iframe. */
+function ensurePreviewPanelMount() {
+  if (document.getElementById("preview-panel")) return;
+  const pane = document.querySelector(".preview-pane");
+  if (!pane) return;
+  const panel = document.createElement("div");
+  panel.id = "preview-panel";
+  panel.className = "preview-panel";
+  panel.setAttribute("role", "region");
+  panel.setAttribute("aria-label", "Audiotool simulation");
+  const iframe = pane.querySelector("iframe#preview-frame");
+  if (iframe?.parentElement) {
+    iframe.parentElement.insertAdjacentElement("afterend", panel);
+  } else {
+    pane.appendChild(panel);
+  }
+}
+
+/**
+ * Layout CSS expects `.panes` to contain editor | splitter | preview. Older HTML omitted
+ * the splitter, which breaks the grid and collapses the editor column.
+ */
+function ensurePanesSplitter() {
+  const panes = document.querySelector(".panes");
+  if (!panes || panes.querySelector("#splitter,.splitter")) return;
+  const preview = document.querySelector(".preview-pane");
+  if (!preview) return;
+  const split = document.createElement("div");
+  split.id = "splitter";
+  split.className = "splitter";
+  split.setAttribute("role", "separator");
+  split.setAttribute("aria-orientation", "vertical");
+  split.setAttribute("tabindex", "0");
+  split.setAttribute("aria-label", "Resize editor and preview");
+  preview.before(split);
+}
+
+function injectSdkToggleIfNeeded() {
+  if (document.getElementById("sdk-view-toggle")) return;
+  const tablist = document.querySelector(".editor-tab-buttons");
+  if (!tablist) return;
+  let group = tablist.parentElement;
+  if (!group?.classList.contains("editor-tab-inline-group")) {
+    const newGroup = document.createElement("div");
+    newGroup.className = "editor-tab-inline-group";
+    const bar = tablist.parentElement;
+    if (!bar?.classList.contains("editor-tab-bar")) {
+      const wrap = document.createElement("div");
+      wrap.className = "editor-tab-bar";
+      tablist.replaceWith(wrap);
+      wrap.appendChild(newGroup);
+    } else {
+      tablist.replaceWith(newGroup);
+    }
+    newGroup.appendChild(tablist);
+    group = newGroup;
+  }
+  const btn = document.createElement("button");
+  btn.id = "sdk-view-toggle";
+  btn.type = "button";
+  btn.className = "editor-tab sdk-view-toggle";
+  btn.textContent = "SDK";
+  btn.title = "SDK simulation (Tone Matrix & apply output)";
+  btn.setAttribute("aria-pressed", "false");
+  btn.setAttribute("aria-label", "Show SDK simulation instead of live preview");
+  group.appendChild(btn);
+}
+
+function injectNoteEditorButtonIfNeeded() {
+  if (document.getElementById("note-editor-open")) return;
+  const sdk = document.getElementById("sdk-view-toggle");
+  if (!sdk?.parentElement) return;
+  const btn = document.createElement("button");
+  btn.id = "note-editor-open";
+  btn.type = "button";
+  btn.className = "editor-tab note-editor-open-btn";
+  btn.textContent = "Note editor";
+  btn.title = "Load the piano-roll note editor into HTML, CSS, and JavaScript";
+  btn.setAttribute("aria-label", "Load note editor sample");
+  btn.setAttribute("aria-pressed", "false");
+  sdk.insertAdjacentElement("afterend", btn);
+}
+
+injectEditorWorkbenchIfNeeded();
+ensurePanesSplitter();
+ensurePreviewFrameAlias();
+ensurePreviewPanelMount();
+injectSdkToggleIfNeeded();
+injectNoteEditorButtonIfNeeded();
+
+const editorHtmlElement = document.getElementById("editor-html");
+const editorCssElement = document.getElementById("editor-css");
+const editorJsElement = document.getElementById("editor-js");
+const previewFrameElement = document.getElementById("preview-frame");
 const runButton = document.getElementById("run-btn");
 const resetButton = document.getElementById("reset-btn");
 const samplesButton = document.getElementById("samples-btn");
@@ -57,9 +223,18 @@ const previewModeLabel = document.getElementById("preview-mode-label");
 const audiotoolStatusElement = document.getElementById("audiotool-status");
 const redirectUrlElement = document.getElementById("redirect-url");
 const previewPanelElement = document.getElementById("preview-panel");
+const previewPaneElement = document.getElementById("preview-pane");
+const previewSurfaceIndicator = document.getElementById("preview-surface-indicator");
+const sdkViewToggle = document.getElementById("sdk-view-toggle");
+const noteEditorOpenButton = document.getElementById("note-editor-open");
 const listProjectsButton = document.getElementById("list-projects-btn");
 const createProjectButton = document.getElementById("create-project-btn");
 const consoleOutput = document.getElementById("console-output");
+
+function setNoteEditorButtonActive(active) {
+  noteEditorOpenButton?.classList.toggle("active", active);
+  noteEditorOpenButton?.setAttribute("aria-pressed", active ? "true" : "false");
+}
 
 const THEME_KEY = "jsplayground-theme";
 const ACCENT_KEY = "jsplayground-accent";
@@ -241,7 +416,12 @@ let sessionAliasState = new Map();
 let sessionActivity = [];
 let sessionMeta = null;
 let lastApplySummary = "No apply requests yet.";
-let sessionConnectionStatus = "not connected";
+/** Tracks the current preview run so iframe `audiotool.apply` can record ops. */
+let previewRunCapture = null;
+/** `live` = HTML/CSS/JS iframe; `sdk` = Tone Matrix / simulation panel. */
+let previewSurfaceMode = "live";
+let livePreviewDebounceTimer = null;
+const LIVE_PREVIEW_DEBOUNCE_MS = 380;
 
 monaco.languages.typescript.javascriptDefaults.setEagerModelSync(true);
 monaco.languages.typescript.javascriptDefaults.setCompilerOptions({
@@ -296,20 +476,92 @@ const initialEditorTheme = initialThemeId;
 const initialFontSize =
   (FONT_SIZE_OPTIONS.find((o) => o.id === (localStorage.getItem(EDITOR_FONT_SIZE_KEY) || "medium")) || FONT_SIZE_OPTIONS[1]).px;
 
-const editor = monaco.editor.create(editorElement, {
-  value: defaultSource,
-  language: "javascript",
+const editorBaseOptions = {
   theme: initialEditorTheme,
   minimap: { enabled: false },
   automaticLayout: true,
   fontSize: initialFontSize,
   tabSize: 2,
+};
+
+if (!editorHtmlElement || !editorCssElement || !editorJsElement) {
+  throw new Error(
+    "JS Playground: missing editor panels. Expected #editor-html, #editor-css, #editor-js (or a legacy #editor container).",
+  );
+}
+
+const editorHtml = monaco.editor.create(editorHtmlElement, {
+  ...editorBaseOptions,
+  value: defaultHtml,
+  language: "html",
 });
 
-// Expose editor instance for simple global handlers if needed.
+const editorCss = monaco.editor.create(editorCssElement, {
+  ...editorBaseOptions,
+  value: defaultCss,
+  language: "css",
+});
+
+const editorJs = monaco.editor.create(editorJsElement, {
+  ...editorBaseOptions,
+  value: defaultSource,
+  language: "javascript",
+});
+
+// Expose JS editor for samples and ad-hoc debugging.
 try {
-  window.editor = editor;
+  window.editor = editorJs;
 } catch (_) {}
+
+function initEditorTabs() {
+  // Only HTML / CSS / JS tabs (inside the tablist). Do not match SDK / Note editor toolbar buttons.
+  const tabButtons = document.querySelectorAll(".editor-tab-buttons .editor-tab[data-editor-tab]");
+  const panels = {
+    html: editorHtmlElement,
+    css: editorCssElement,
+    js: editorJsElement,
+  };
+  const editors = { html: editorHtml, css: editorCss, js: editorJs };
+  tabButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const name = btn.dataset.editorTab;
+      if (!name || !panels[name]) return;
+      tabButtons.forEach((b) => {
+        const active = b === btn;
+        b.classList.toggle("active", active);
+        b.setAttribute("aria-selected", String(active));
+      });
+      Object.entries(panels).forEach(([k, el]) => {
+        const active = k === name;
+        el.hidden = !active;
+        el.classList.toggle("active", active);
+        if (active) editors[k].layout();
+      });
+    });
+  });
+}
+
+initEditorTabs();
+
+requestAnimationFrame(() => {
+  for (const ed of [editorHtml, editorCss, editorJs]) {
+    ed.layout();
+  }
+});
+
+setPreviewSurfaceMode("live");
+
+for (const ed of [editorHtml, editorCss, editorJs]) {
+  ed.onDidChangeModelContent(() => {
+    scheduleLivePreviewRefresh();
+  });
+}
+
+sdkViewToggle?.addEventListener("click", () => {
+  setNoteEditorButtonActive(false);
+  const isSdk = sdkViewToggle.getAttribute("aria-pressed") === "true";
+  setPreviewSurfaceMode(isSdk ? "live" : "sdk");
+});
 
 function applyEditorFontSize(sizeId) {
   const opt = FONT_SIZE_OPTIONS.find((o) => o.id === sizeId) || FONT_SIZE_OPTIONS[1];
@@ -317,8 +569,10 @@ function applyEditorFontSize(sizeId) {
     localStorage.setItem(EDITOR_FONT_SIZE_KEY, opt.id);
   } catch (_) {}
   try {
-    if (typeof monaco !== "undefined" && monaco.editor && typeof editor !== "undefined") {
-      editor.updateOptions({ fontSize: opt.px });
+    if (typeof monaco !== "undefined" && monaco.editor) {
+      for (const ed of [editorHtml, editorCss, editorJs]) {
+        ed.updateOptions({ fontSize: opt.px });
+      }
     }
   } catch (_) {}
 }
@@ -336,9 +590,64 @@ function clearConsole() {
 }
 
 // ---- Samples modal and actions ----
+const SAMPLE_CATEGORIES = [
+  { id: "all", label: "All" },
+  { id: "html", label: "HTML" },
+  { id: "css", label: "CSS" },
+  { id: "javascript", label: "JavaScript" },
+  { id: "sdk", label: "SDK" },
+];
+
+function getSampleJsPayload(s) {
+  return s.js !== undefined ? s.js : s.code;
+}
+
+function sampleHasLoadableContent(s) {
+  return (
+    s.html !== undefined ||
+    s.css !== undefined ||
+    getSampleJsPayload(s) !== undefined
+  );
+}
+
+function applySampleToEditors(s) {
+  if (s.html !== undefined) editorHtml.setValue(s.html);
+  if (s.css !== undefined) editorCss.setValue(s.css);
+  const j = getSampleJsPayload(s);
+  if (j !== undefined) editorJs.setValue(j);
+}
+
+function sampleRunsViaAudiotoolOnly(s) {
+  const j = getSampleJsPayload(s);
+  const hasJs = j !== undefined && String(j).trim() !== "";
+  return !hasJs && (s.ops || s.opsGenerator);
+}
+
 const samples = [
   {
+    id: "sample-html-hello",
+    category: "html",
+    title: "Hello section",
+    description: "A simple section with a heading and paragraph.",
+    html: `<section class="demo-block">\n  <h2>Hello</h2>\n  <p>Edit HTML and click Run to refresh the live preview.</p>\n</section>\n`,
+  },
+  {
+    id: "sample-css-accent",
+    category: "css",
+    title: "Accent heading",
+    description: "Style the demo heading in the live preview.",
+    css: `.demo-block h2 {\n  color: #38bdf8;\n  margin-top: 0;\n}\n`,
+  },
+  {
+    id: "sample-js-log",
+    category: "javascript",
+    title: "Console message",
+    description: "Log a message from the sandboxed preview (see Console below).",
+    js: `console.log("Hello from the playground preview");\n`,
+  },
+  {
     id: "ensure-tonematrix",
+    category: "sdk",
     title: "Create Tone Matrix",
     description: "Creates a ToneMatrix (alias: tm) and sets a default position.",
     ops: [
@@ -350,6 +659,7 @@ const samples = [
   },
   {
     id: "add-synth",
+    category: "sdk",
     title: "Add Device",
     description: "Adds a synth device (alias: synth1) and sets a preset + position.",
     ops: [
@@ -362,6 +672,7 @@ const samples = [
   },
   {
     id: "connect-parameter-slider",
+    category: "sdk",
     title: "Connect Parameter to Slider",
     description:
       "Updates a numeric parameter, then adjust it in the Preview panel via a slider.",
@@ -373,6 +684,7 @@ const samples = [
   },
   {
     id: "add-drum-machine",
+    category: "sdk",
     title: "Add Drum Machine",
     description: "Create a drum machine (alias: drum1) and set a drum kit/pattern.",
     ops: [
@@ -385,6 +697,7 @@ const samples = [
   },
   {
     id: "add-bass",
+    category: "sdk",
     title: "Add Bass",
     description: "Create a bass instrument (alias: bass1) with a deep preset and place it.",
     ops: [
@@ -397,6 +710,7 @@ const samples = [
   },
   {
     id: "populate-tonematrix-pattern",
+    category: "sdk",
     title: "Populate ToneMatrix Pattern",
     description: "Write a simple repeating pattern into the tonematrix (creates it if missing).",
     opsGenerator: () => {
@@ -409,6 +723,7 @@ const samples = [
   },
   {
     id: "create-band",
+    category: "sdk",
     title: "Create Mini Band",
     description: "Create a small band: synth, bass and drum machine positioned across the studio.",
     ops: [
@@ -426,84 +741,183 @@ const samples = [
   },
 ];
 
+/** Loaded only via the "Note editor" toolbar button (not listed under Samples). */
+const NOTE_EDITOR_SAMPLE = {
+  html: noteEditorSampleHtml,
+  css: noteEditorSampleCss,
+  js: noteEditorSampleJs,
+};
+
+function loadNoteEditorSample() {
+  try {
+    applySampleToEditors(NOTE_EDITOR_SAMPLE);
+    setNoteEditorButtonActive(true);
+    sdkViewToggle?.classList.remove("active");
+    sdkViewToggle?.setAttribute("aria-pressed", "false");
+    setPreviewSurfaceMode("live");
+    scheduleLivePreviewRefresh();
+    appendConsoleLine("info", "Loaded note editor into editors.");
+  } catch (err) {
+    appendConsoleLine("error", `Failed to load note editor: ${err?.message || err}`);
+  }
+}
+
+document.body.addEventListener("click", (e) => {
+  const open = e.target && e.target.closest && e.target.closest("#note-editor-open");
+  if (!open) return;
+  e.preventDefault();
+  loadNoteEditorSample();
+});
+
 function openSamplesModal() {
-  // Build modal element
   const overlay = document.createElement("div");
   overlay.className = "modal-overlay";
   overlay.tabIndex = -1;
 
   const modal = document.createElement("div");
-  modal.className = "modal";
+  modal.className = "modal modal-samples";
 
   const title = document.createElement("h3");
-  title.textContent = "Sample actions";
+  title.textContent = "Samples";
   modal.appendChild(title);
 
+  const subtitle = document.createElement("p");
+  subtitle.className = "subtle samples-modal-subtitle";
+  subtitle.textContent =
+    "Browse by category. SDK samples target Audiotool / simulation; HTML, CSS, and JavaScript update the live preview.";
+  modal.appendChild(subtitle);
+
+  let categoryFilter = "all";
+
+  const categoryBar = document.createElement("div");
+  categoryBar.className = "samples-category-bar";
+  categoryBar.setAttribute("role", "tablist");
+  categoryBar.setAttribute("aria-label", "Sample categories");
+
+  const categoryButtons = [];
+
+  function setActiveCategoryButton() {
+    for (const { btn, id } of categoryButtons) {
+      const active = id === categoryFilter;
+      btn.classList.toggle("active", active);
+      btn.setAttribute("aria-selected", active ? "true" : "false");
+    }
+  }
+
+  for (const cat of SAMPLE_CATEGORIES) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "samples-category-btn";
+    btn.textContent = cat.label;
+    btn.dataset.category = cat.id;
+    btn.setAttribute("role", "tab");
+    btn.setAttribute("aria-selected", categoryFilter === cat.id ? "true" : "false");
+    if (categoryFilter === cat.id) btn.classList.add("active");
+    btn.addEventListener("click", () => {
+      categoryFilter = cat.id;
+      setActiveCategoryButton();
+      renderSampleRows();
+    });
+    categoryBar.appendChild(btn);
+    categoryButtons.push({ btn, id: cat.id });
+  }
+  modal.appendChild(categoryBar);
+
   const list = document.createElement("ul");
-  list.className = "project-list";
-  for (const s of samples) {
-    const li = document.createElement("li");
-    const meta = document.createElement("div");
-    meta.className = "meta";
-    const t = document.createElement("div");
-    t.className = "title";
-    t.textContent = s.title;
-    const d = document.createElement("div");
-    d.className = "subtle";
-    d.textContent = s.description;
-    meta.appendChild(t);
-    meta.appendChild(d);
-    const actions = document.createElement("div");
-    // Load button: loads sample.code into the editor for editing
-    if (s.code) {
-      const loadBtn = document.createElement("button");
-      loadBtn.textContent = "Load";
-      loadBtn.className = "btn";
-      loadBtn.addEventListener("click", () => {
-        try {
-          if (typeof editor?.setValue === "function") {
-            editor.setValue(s.code);
-            appendConsoleLine("info", `Loaded sample into editor: ${s.title}`);
-          } else {
-            appendConsoleLine("warn", "Editor not available to load sample code.");
-          }
-        } catch (err) {
-          appendConsoleLine("error", `Failed to load sample code: ${err?.message || err}`);
-        }
-      });
-      actions.appendChild(loadBtn);
+  list.className = "project-list samples-modal-list";
+
+  function categoryLabelFor(sample) {
+    return SAMPLE_CATEGORIES.find((c) => c.id === sample.category)?.label ?? sample.category ?? "—";
+  }
+
+  function renderSampleRows() {
+    list.innerHTML = "";
+    const filtered =
+      categoryFilter === "all"
+        ? samples
+        : samples.filter((s) => s.category === categoryFilter);
+
+    if (!filtered.length) {
+      const li = document.createElement("li");
+      li.className = "project-list-empty-match";
+      li.textContent = "No samples in this category.";
+      list.appendChild(li);
+      return;
     }
 
-    const applyBtn = document.createElement("button");
-    applyBtn.textContent = "Run";
-    applyBtn.className = "btn-primary";
-    applyBtn.addEventListener("click", async () => {
-      try {
-        appendConsoleLine("info", `Running sample: ${s.title}`);
-        // Load sample into the editor so user sees it (and can edit)
-        if (s.code && typeof editor?.setValue === "function") {
-          editor.setValue(s.code);
-        }
-        // For samples that don't have explicit code, run their ops via the local preview API.
-        if (!s.code) {
-          const ops = s.opsGenerator ? s.opsGenerator() : s.ops;
-          await window.audiotool.apply({ ops });
-        } else {
-        await runCode();
-        }
-        appendConsoleLine("ok", `Sample ran: ${s.title}`);
-        pushSessionActivity("info", `Ran sample: ${s.title}`);
-        // close modal
-        document.body.removeChild(overlay);
-      } catch (err) {
-        appendConsoleLine("error", `Failed to run sample: ${err?.message || err}`);
+    for (const s of filtered) {
+      const li = document.createElement("li");
+      const meta = document.createElement("div");
+      meta.className = "meta";
+
+      const titleRow = document.createElement("div");
+      titleRow.className = "samples-title-row";
+      const t = document.createElement("div");
+      t.className = "title";
+      t.textContent = s.title;
+      titleRow.appendChild(t);
+      if (categoryFilter === "all") {
+        const pill = document.createElement("span");
+        pill.className = "samples-cat-pill";
+        pill.textContent = categoryLabelFor(s);
+        titleRow.appendChild(pill);
       }
-    });
-    actions.appendChild(applyBtn);
-    li.appendChild(meta);
-    li.appendChild(actions);
-    list.appendChild(li);
+      meta.appendChild(titleRow);
+
+      const d = document.createElement("div");
+      d.className = "subtle";
+      d.textContent = s.description;
+      meta.appendChild(d);
+
+      const actions = document.createElement("div");
+
+      if (sampleHasLoadableContent(s)) {
+        const loadBtn = document.createElement("button");
+        loadBtn.textContent = "Load";
+        loadBtn.className = "btn";
+        loadBtn.addEventListener("click", () => {
+          try {
+            applySampleToEditors(s);
+            appendConsoleLine("info", `Loaded sample into editor(s): ${s.title}`);
+          } catch (err) {
+            appendConsoleLine("error", `Failed to load sample: ${err?.message || err}`);
+          }
+        });
+        actions.appendChild(loadBtn);
+      }
+
+      const applyBtn = document.createElement("button");
+      applyBtn.textContent = "Run";
+      applyBtn.className = "btn-primary";
+      applyBtn.addEventListener("click", async () => {
+        try {
+          appendConsoleLine("info", `Running sample: ${s.title}`);
+          applySampleToEditors(s);
+          if (sampleRunsViaAudiotoolOnly(s)) {
+            const ops = s.opsGenerator ? s.opsGenerator() : s.ops;
+            await window.audiotool.apply({ ops });
+            if (s.category === "sdk") {
+              setPreviewSurfaceMode("sdk");
+            }
+          } else {
+            await runCode({ endSurface: s.category === "sdk" ? "sdk" : "live" });
+          }
+          appendConsoleLine("ok", `Sample ran: ${s.title}`);
+          pushSessionActivity("info", `Ran sample: ${s.title}`);
+          document.body.removeChild(overlay);
+        } catch (err) {
+          appendConsoleLine("error", `Failed to run sample: ${err?.message || err}`);
+        }
+      });
+      actions.appendChild(applyBtn);
+
+      li.appendChild(meta);
+      li.appendChild(actions);
+      list.appendChild(li);
+    }
   }
+
+  renderSampleRows();
   modal.appendChild(list);
 
   const closeRow = document.createElement("div");
@@ -606,6 +1020,16 @@ function escapeHtml(value) {
     .replaceAll("'", "&#39;");
 }
 
+/** Escape `<` in CSS so it cannot break out of a `<style>` block. */
+function escapeCssForStyleElement(css) {
+  return String(css).replace(/</g, "\\3c ");
+}
+
+/** Escape `</script>` sequences in user JS when embedding a script tag. */
+function escapeClosingScriptTag(js) {
+  return String(js).replace(/<\/script>/gi, "<\\/script>");
+}
+
 function formatClockTime(date = new Date()) {
   return new Intl.DateTimeFormat(undefined, {
     hour: "2-digit",
@@ -641,39 +1065,69 @@ function rewriteImportsToUrls(sourceCode, importMap) {
   return out;
 }
 
-async function runUserModule({ sourceCode, importMap, audiotoolApi, onConsole }) {
-  const rewritten = rewriteImportsToUrls(sourceCode, importMap);
-  const wrapped = `
-const __prevConsole = globalThis.console;
-const __onConsole = globalThis.__onConsole;
-const __audiotool = globalThis.__audiotool;
-globalThis.console = {
-  ...__prevConsole,
-  log: (...a) => { __onConsole("log", a); __prevConsole.log(...a); },
-  info: (...a) => { __onConsole("info", a); __prevConsole.info(...a); },
-  warn: (...a) => { __onConsole("warn", a); __prevConsole.warn(...a); },
-  error: (...a) => { __onConsole("error", a); __prevConsole.error(...a); },
-};
-globalThis.audiotool = __audiotool;
-try {
-${rewritten}
-} finally {
-  globalThis.console = __prevConsole;
+function buildPreviewSrcdoc({ html, css, js, importMap }) {
+  const safeCss = escapeCssForStyleElement(css);
+  const rewrittenJs = rewriteImportsToUrls(js, importMap);
+  const safeJs = escapeClosingScriptTag(rewrittenJs);
+  const importMapJson = JSON.stringify(importMap).replace(/</g, "\\u003c");
+  const bridge = `(function(){var send=function(level,args){try{var s=args.map(function(a){if(a instanceof Error)return a.stack||a.message;try{return typeof a==="object"?JSON.stringify(a):String(a)}catch(e){return String(a)}});parent.postMessage({type:"playground-console",level:level,args:s},"*")}catch(e){}};["log","info","warn","error","debug"].forEach(function(m){var k=m==="debug"?"log":m;var orig=console[m];console[m]=function(){var args=Array.prototype.slice.call(arguments);send(k,args);return orig.apply(console,arguments)}});window.onerror=function(msg,src,line,col,err){parent.postMessage({type:"playground-error",message:String(msg),stack:err&&err.stack},"*");return false};window.addEventListener("unhandledrejection",function(e){var r=e.reason;parent.postMessage({type:"playground-error",message:String(r&&r.message||r),stack:r&&r.stack},"*")});window.audiotool={apply:function(payload){return new Promise(function(resolve,reject){var id="at_"+Math.random().toString(36).slice(2);function onMsg(e){if(!e.data||e.data.type!=="audiotool-result"||e.data.id!==id)return;window.removeEventListener("message",onMsg);if(e.data.error)reject(new Error(e.data.error));else resolve(e.data.result)}window.addEventListener("message",onMsg);parent.postMessage({type:"audiotool-apply",id:id,payload:payload},"*")})}}})();`;
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script type="importmap">${importMapJson}</script>
+<style>${safeCss}</style>
+</head>
+<body>
+<script>${bridge}</script>
+${html}
+<script type="module">${safeJs}</script>
+</body>
+</html>`;
 }
-`;
-  globalThis.__onConsole = onConsole;
-  globalThis.__audiotool = audiotoolApi;
-  const blob = new Blob([wrapped], { type: "text/javascript" });
-  const url = URL.createObjectURL(blob);
-  try {
-    return await import(/* @vite-ignore */ url);
-  } finally {
-    URL.revokeObjectURL(url);
-    try {
-      delete globalThis.__onConsole;
-      delete globalThis.__audiotool;
-    } catch (_) {}
+
+function setPreviewSurfaceMode(mode) {
+  previewSurfaceMode = mode;
+  previewPaneElement?.classList.toggle("preview-pane--live", mode === "live");
+  previewPaneElement?.classList.toggle("preview-pane--sdk", mode === "sdk");
+  if (previewPaneElement) previewPaneElement.dataset.previewSurface = mode;
+  sdkViewToggle?.setAttribute("aria-pressed", mode === "sdk" ? "true" : "false");
+  sdkViewToggle?.classList.toggle("active", mode === "sdk");
+  if (previewSurfaceIndicator) {
+    previewSurfaceIndicator.textContent =
+      mode === "sdk"
+        ? "SDK simulation · Tone Matrix & apply output"
+        : "Live preview · HTML, CSS, and JavaScript";
   }
+}
+
+function applyLivePreviewOnly() {
+  const packageList = parsePackageInput(packageInput.value);
+  const importMap = buildImportMap(packageList);
+  const html = editorHtml.getValue();
+  const css = editorCss.getValue();
+  const sourceCode = editorJs.getValue();
+  const capturedOps = [];
+  previewRunCapture = { capturedOps };
+  try {
+    const srcdoc = buildPreviewSrcdoc({ html, css, js: sourceCode, importMap });
+    if (previewFrameElement) {
+      previewFrameElement.srcdoc = srcdoc;
+      previewFrameElement.onload = null;
+    }
+  } catch {
+    /* invalid while typing */
+  }
+}
+
+function scheduleLivePreviewRefresh() {
+  setPreviewSurfaceMode("live");
+  clearTimeout(livePreviewDebounceTimer);
+  livePreviewDebounceTimer = setTimeout(() => {
+    livePreviewDebounceTimer = null;
+    applyLivePreviewOnly();
+  }, LIVE_PREVIEW_DEBOUNCE_MS);
 }
 
 function addSessionSubscription(terminable) {
@@ -751,19 +1205,22 @@ function renderSessionMetaList() {
     return;
   }
 
+  const statusLabel =
+    activeDocument && activeProject ? "connected" : "not connected";
+
   const values = sessionMeta
     ? [
         ["Project", sessionMeta.displayName || sessionMeta.projectId || "(unknown)"],
         ["Project ID", sessionMeta.projectId || "(unknown)"],
         ["Creator", sessionMeta.creatorName || "(unknown)"],
-        ["Status", sessionConnectionStatus],
+        ["Status", statusLabel],
         ["Studio URL", sessionMeta.studioUrl || activeProjectStudioUrl || "(none)"],
       ]
     : [
         ["Project", "(not connected)"],
         ["Project ID", "-"],
         ["Creator", "-"],
-        ["Status", sessionConnectionStatus],
+        ["Status", statusLabel],
         ["Studio URL", "-"],
       ];
 
@@ -850,6 +1307,12 @@ function renderLastApplySummary() {
 }
 
 function renderSessionDashboard() {
+  // While a SyncedDocument is active, keep the preview label in sync on every render.
+  if (activeDocument && activeProject) {
+    setSessionModeLabel(
+      "sandbox runtime active; use Open Project Tab for Studio visuals.",
+    );
+  }
   renderSessionMetaList();
   renderEntitySummaryList();
   renderAliasSummaryList();
@@ -863,7 +1326,6 @@ function resetSessionDashboard(message = "waiting for project connection") {
   sessionAliasState = new Map();
   sessionActivity = [];
   lastApplySummary = "No apply requests yet.";
-  sessionConnectionStatus = "not connected";
   setSessionModeLabel(message);
   renderSessionDashboard();
 }
@@ -927,28 +1389,6 @@ function attachSessionDocumentSubscriptions() {
   }
 
   clearSessionSubscriptions();
-
-  try {
-    if (activeDocument.connected?.subscribe) {
-      addSessionSubscription(
-        activeDocument.connected.subscribe((isConnected) => {
-          sessionConnectionStatus = isConnected ? "connected" : "reconnecting";
-          setSessionModeLabel(
-            isConnected
-              ? "sandbox runtime active; use Open Project Tab for Studio visuals."
-              : "connection interrupted, waiting for sync recovery...",
-          );
-          renderSessionDashboard();
-        }, true),
-      );
-    }
-  } catch (error) {
-    pushSessionActivity(
-      "warn",
-      "Connection status subscription unavailable.",
-      toDisplayString(error),
-    );
-  }
 
   try {
     if (activeDocument.events?.onCreate) {
@@ -1264,10 +1704,7 @@ async function connectProject(project) {
     activeDocument = document;
     activeProject = projectReference;
     activeProjectStudioUrl = studioUrl;
-    sessionConnectionStatus = "connected";
-    setSessionModeLabel(
-      "sandbox runtime active; use Open Project Tab for Studio visuals.",
-    );
+    renderSessionDashboard();
     await refreshSessionMetadata();
     await refreshSessionEntitySummary();
     attachSessionDocumentSubscriptions();
@@ -1275,19 +1712,7 @@ async function connectProject(project) {
     setAudiotoolStatus(`Connected to project: ${projectReference}`, "ok");
     appendConsoleLine(
       "system",
-      `Connected Audiotool project: ${projectReference}`,
-    );
-    appendConsoleLine(
-      "system",
-      "Session preview is now data-driven and updates from sandbox/apply events.",
-    );
-    appendConsoleLine(
-      "system",
-      "Use Open Project Tab to view and edit the full Audiotool Studio UI.",
-    );
-    appendConsoleLine(
-      "system",
-      "The in-page preview now shows your sandbox runtime plus action log/state.",
+      `Connected: ${projectReference}. Preview and apply sync here; use Open Project Tab for full Studio.`,
     );
     pushSessionActivity(
       "system",
@@ -1553,7 +1978,6 @@ function getCurrentThemeId() {
 
 const previewPanel = new PreviewPanel(previewPanelElement, {
   onParameterChange: ({ entityAlias, field, value }) => {
-    // Update the simulated preview immediately; optionally forward to SDK if connected.
     previewPanel.applyOps([{ op: "updateField", entityAlias, field, value }]);
     queueAudiotoolTask(async () => {
       if (!activeDocument) return;
@@ -1564,6 +1988,70 @@ const previewPanel = new PreviewPanel(previewPanelElement, {
   },
 });
 previewPanel.render();
+
+async function executeAudiotoolApplyWithPreview(payload, { captureOps } = {}) {
+  const { project, ops } = validateApplyPayload(payload);
+  if (captureOps) captureOps.push(...ops);
+  previewPanel.applyOps(ops);
+  if (loginStatus?.loggedIn) {
+    try {
+      await queueAudiotoolTask(async () => {
+        await ensureRequestedProject(project);
+        await processAudiotoolApplyRequest({ payload: { project, ops } });
+      });
+    } catch (err) {
+      appendConsoleLine("error", toDisplayString(err));
+      throw err;
+    }
+  }
+  return { applied: ops.length, simulated: !loginStatus?.loggedIn };
+}
+
+function initPreviewMessageBridge() {
+  if (!previewFrameElement) return;
+  window.addEventListener("message", (e) => {
+    if (e.source !== previewFrameElement.contentWindow) return;
+    const d = e.data;
+    if (!d || typeof d !== "object") return;
+
+    if (d.type === "playground-console" && Array.isArray(d.args)) {
+      const level =
+        d.level === "error" || d.level === "warn" ? d.level : "log";
+      const text = d.args.join(" ");
+      appendConsoleLine(level, text);
+      if (level === "warn" || level === "error") {
+        pushSessionActivity(level, "Preview console message.", text);
+      }
+      return;
+    }
+
+    if (d.type === "playground-error") {
+      const detail = d.stack || d.message || "Unknown preview error";
+      appendConsoleLine("error", detail);
+      pushSessionActivity("error", "Preview runtime error.", detail);
+      return;
+    }
+
+    if (d.type === "audiotool-apply") {
+      const { id, payload } = d;
+      if (!id) return;
+      void executeAudiotoolApplyWithPreview(payload, {
+        captureOps: previewRunCapture?.capturedOps,
+      })
+        .then((result) => {
+          e.source?.postMessage({ type: "audiotool-result", id, result }, "*");
+        })
+        .catch((err) => {
+          e.source?.postMessage(
+            { type: "audiotool-result", id, error: toDisplayString(err) },
+            "*",
+          );
+        });
+    }
+  });
+}
+
+initPreviewMessageBridge();
 
 // Provide a default local audiotool shim so Samples can run without clicking Run.
 window.audiotool = {
@@ -1580,54 +2068,41 @@ window.audiotool = {
   },
 };
 
-async function runCode() {
+/**
+ * @param {{ endSurface?: "live" | "sdk" }} [options]
+ *   `endSurface: "sdk"` keeps the preview surface on SDK simulation after run (for SDK-category samples).
+ */
+async function runCode(options = {}) {
+  const endSurface = options.endSurface ?? "live";
+  if (endSurface !== "sdk") {
+    setPreviewSurfaceMode("live");
+  }
   clearConsole();
   previewPanel.reset();
 
   const packageList = parsePackageInput(packageInput.value);
   const importMap = buildImportMap(packageList);
-  const sourceCode = editor.getValue();
+  const html = editorHtml.getValue();
+  const css = editorCss.getValue();
+  const sourceCode = editorJs.getValue();
 
   const capturedOps = [];
-  const capturedConsole = [];
-
-  const audiotoolApi = {
-    async apply(payload) {
-      const { project, ops } = validateApplyPayload(payload);
-      capturedOps.push(...ops);
-      previewPanel.applyOps(ops);
-
-      // If logged in + connected, forward to real SDK. If not, simulate only.
-      if (loginStatus?.loggedIn) {
-        try {
-          await queueAudiotoolTask(async () => {
-            await ensureRequestedProject(project);
-            await processAudiotoolApplyRequest({ payload: { project, ops } });
-          });
-        } catch (err) {
-          appendConsoleLine("error", toDisplayString(err));
-          throw err;
-        }
-      }
-      return { applied: ops.length, simulated: !loginStatus?.loggedIn };
-    },
-  };
-
-  const onConsole = (level, args) => {
-    const text = args.map((a) => toDisplayString(a)).join(" ");
-    capturedConsole.push({ level, text });
-    appendConsoleLine(level, text);
-    if (level === "warn" || level === "error") {
-      pushSessionActivity(level, "Runtime console message.", text);
-    }
-  };
+  previewRunCapture = { capturedOps };
 
   try {
-    await runUserModule({ sourceCode, importMap, audiotoolApi, onConsole });
+    const srcdoc = buildPreviewSrcdoc({ html, css, js: sourceCode, importMap });
+    if (previewFrameElement) {
+      previewFrameElement.srcdoc = srcdoc;
+      previewFrameElement.onload = () => {
+        appendConsoleLine("system", "Preview iframe loaded.");
+      };
+    } else {
+      appendConsoleLine("warn", "Preview iframe element missing; cannot render HTML/CSS/JS.");
+    }
   } catch (err) {
     const detail = toDisplayString(err);
     appendConsoleLine("error", detail);
-    pushSessionActivity("error", "Runtime error.", detail);
+    pushSessionActivity("error", "Failed to build preview document.", detail);
   }
 
   const packageLabel = packageList.length
@@ -1639,14 +2114,129 @@ async function runCode() {
   appendConsoleLine("system", `Running with packages: ${packageLabel}`);
   appendConsoleLine(
     "system",
-    `Preview updated (${capturedOps.length} captured op${capturedOps.length === 1 ? "" : "s"}). Theme: ${getCurrentThemeId()}.`,
+    `Preview document updated. Theme: ${getCurrentThemeId()}.`,
   );
   pushSessionActivity("runtime", "Sandbox runtime refreshed.", packageLabel);
+
+  if (endSurface === "sdk") {
+    setPreviewSurfaceMode("sdk");
+  }
+}
+
+function normalizeProjectListEntry(item) {
+  const name = item?.name || item?.projectId || item?.id || "";
+  let projectId = "";
+  if (typeof name === "string" && name.startsWith("projects/")) {
+    projectId = name.replace(/^projects\//, "");
+  } else if (typeof item?.projectId === "string") {
+    projectId = item.projectId;
+  } else if (typeof item?.id === "string") {
+    projectId = item.id;
+  }
+  const displayName = item?.displayName || item?.title || projectId || name;
+  const searchBlob = `${displayName} ${projectId} ${name} ${item?.description || ""}`.toLowerCase();
+  return { item, name, projectId, displayName, searchBlob };
+}
+
+function projectListEntryMatchesQuery(entry, q) {
+  if (!q) return true;
+  return entry.searchBlob.includes(q);
+}
+
+function appendProjectListRow(listEl, entry) {
+  const { item, projectId, displayName } = entry;
+  const li = document.createElement("li");
+  const meta = document.createElement("div");
+  meta.className = "meta";
+  meta.innerHTML = `<div class="title">${escapeHtml(displayName)}</div><div class="subtle">${escapeHtml(projectId)}</div>`;
+
+  const actions = document.createElement("div");
+  const connectBtn = document.createElement("button");
+  connectBtn.textContent = "Connect";
+  connectBtn.className = "buttons";
+  connectBtn.addEventListener("click", async () => {
+    try {
+      let target = projectId;
+      if (!target) {
+        target = extractProjectUuid(item?.studioUrl || item?.url || item?.name || "");
+      }
+      if (!target) {
+        setAudiotoolStatus("Could not determine project ID for selection.", "error");
+        return;
+      }
+      const overlayEl = document.getElementById("_project_list_overlay");
+      overlayEl?.remove();
+      projectInput.value = target;
+      await connectProject(target);
+    } catch (err) {
+      const detail = toDisplayString(err);
+      setAudiotoolStatus(`Could not connect to project: ${detail}`, "error");
+      appendConsoleLine("error", detail);
+    }
+  });
+
+  const copyBtn = document.createElement("button");
+  copyBtn.textContent = "Copy ID";
+  copyBtn.className = "buttons";
+  copyBtn.addEventListener("click", async () => {
+    try {
+      const toCopy = projectId || item?.projectId || item?.id || item?.name || "";
+      await navigator.clipboard.writeText(toCopy);
+      setAudiotoolStatus("Project ID copied to clipboard.", "ok");
+    } catch (err) {
+      setAudiotoolStatus("Copy failed.", "warn");
+    }
+  });
+
+  actions.appendChild(connectBtn);
+  actions.appendChild(copyBtn);
+  li.appendChild(meta);
+  li.appendChild(actions);
+  listEl.appendChild(li);
+}
+
+function renderProjectListItems(overlay) {
+  const listEl = overlay.querySelector("#_project_list_items");
+  const searchWrap = overlay.querySelector("#_project_list_search_wrap");
+  const searchInput = overlay.querySelector("#_project_list_search");
+  const rawItems = overlay._allProjectItems || [];
+  const q = (searchInput?.value || "").trim().toLowerCase();
+
+  listEl.innerHTML = "";
+
+  if (!rawItems.length) {
+    if (searchWrap) searchWrap.hidden = true;
+    const li = document.createElement("li");
+    li.textContent = "No projects found or you don't have permissions to list projects.";
+    listEl.appendChild(li);
+    return;
+  }
+
+  if (searchWrap) searchWrap.hidden = false;
+
+  const entries = rawItems.map(normalizeProjectListEntry);
+  const filtered = q ? entries.filter((e) => projectListEntryMatchesQuery(e, q)) : entries;
+
+  if (!filtered.length) {
+    const li = document.createElement("li");
+    li.className = "project-list-empty-match";
+    li.textContent = "No projects match your search.";
+    listEl.appendChild(li);
+    return;
+  }
+
+  for (const entry of filtered) {
+    appendProjectListRow(listEl, entry);
+  }
 }
 
 function createProjectListModal() {
-  // create modal DOM only once when requested
   let overlay = document.getElementById("_project_list_overlay");
+  // Hot reload or an older script version can leave a cached overlay without the search field.
+  if (overlay && !overlay.querySelector("#_project_list_search")) {
+    overlay.remove();
+    overlay = null;
+  }
   if (overlay) return overlay;
 
   overlay = document.createElement("div");
@@ -1657,7 +2247,16 @@ function createProjectListModal() {
   modal.className = "modal";
   modal.innerHTML = `
     <h3>Available Projects</h3>
-    <p class="subtle">Select a project to connect or copy its studio URL.</p>
+    <div id="_project_list_search_wrap" class="project-list-search-wrap" role="search" aria-label="Search projects">
+      <label for="_project_list_search" class="project-list-search-label">Search projects</label>
+      <div class="project-list-search-field">
+        <span class="project-list-search-icon" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+        </span>
+        <input type="text" id="_project_list_search" class="project-list-search" inputmode="search" enterkeyhint="search" placeholder="Search by name, ID, or description…" autocomplete="off" spellcheck="false" />
+      </div>
+    </div>
+    <p class="subtle project-list-hint">Select a project below, or narrow the list with the search bar.</p>
     <ul class="project-list" id="_project_list_items"></ul>
     <div class="modal-actions">
       <button id="_project_list_close" class="buttons">Close</button>
@@ -1671,87 +2270,19 @@ function createProjectListModal() {
     overlay.remove();
   });
 
+  const searchInput = overlay.querySelector("#_project_list_search");
+  searchInput?.addEventListener("input", () => renderProjectListItems(overlay));
+
   return overlay;
 }
 
 function showProjectList(items = []) {
   const overlay = createProjectListModal();
-  const listEl = overlay.querySelector("#_project_list_items");
-  listEl.innerHTML = "";
-
-  if (!items || !items.length) {
-    const li = document.createElement("li");
-    li.textContent = "No projects found or you don't have permissions to list projects.";
-    listEl.appendChild(li);
-    return;
-  }
-
-  for (const item of items) {
-    // attempt to normalize fields from various response shapes
-    const name = item?.name || item?.projectId || item?.id || "";
-    let projectId = "";
-    if (typeof name === "string" && name.startsWith("projects/")) {
-      projectId = name.replace(/^projects\//, "");
-    } else if (typeof item?.projectId === "string") {
-      projectId = item.projectId;
-    } else if (typeof item?.id === "string") {
-      projectId = item.id;
-    }
-
-    const displayName = item?.displayName || item?.title || projectId || name;
-    const li = document.createElement("li");
-    const meta = document.createElement("div");
-    meta.className = "meta";
-    meta.innerHTML = `<div class="title">${escapeHtml(displayName)}</div><div class="subtle">${escapeHtml(projectId)}</div>`;
-
-    const actions = document.createElement("div");
-    const connectBtn = document.createElement("button");
-    connectBtn.textContent = "Connect";
-    connectBtn.className = "buttons";
-    connectBtn.addEventListener("click", async () => {
-      try {
-        // if projectId is empty, try to extract UUID from other fields
-        let target = projectId;
-        if (!target) {
-          target = extractProjectUuid(item?.studioUrl || item?.url || item?.name || "");
-        }
-        if (!target) {
-          setAudiotoolStatus("Could not determine project ID for selection.", "error");
-          return;
-        }
-        // close modal
-        const overlayEl = document.getElementById("_project_list_overlay");
-        overlayEl?.remove();
-        // set input and connect
-        projectInput.value = target;
-        await connectProject(target);
-      } catch (err) {
-        const detail = toDisplayString(err);
-        setAudiotoolStatus(`Could not connect to project: ${detail}`, "error");
-        appendConsoleLine("error", detail);
-      }
-    });
-
-    const copyBtn = document.createElement("button");
-    copyBtn.textContent = "Copy ID";
-    copyBtn.className = "buttons";
-    copyBtn.addEventListener("click", async () => {
-      try {
-        const toCopy = projectId || item?.projectId || item?.id || item?.name || "";
-        await navigator.clipboard.writeText(toCopy);
-        setAudiotoolStatus("Project ID copied to clipboard.", "ok");
-      } catch (err) {
-        setAudiotoolStatus("Copy failed.", "warn");
-      }
-    });
-
-    actions.appendChild(connectBtn);
-    actions.appendChild(copyBtn);
-
-    li.appendChild(meta);
-    li.appendChild(actions);
-    listEl.appendChild(li);
-  }
+  overlay._allProjectItems = Array.isArray(items) ? items : [];
+  const searchInput = overlay.querySelector("#_project_list_search");
+  if (searchInput) searchInput.value = "";
+  renderProjectListItems(overlay);
+  requestAnimationFrame(() => searchInput?.focus());
 }
 
 listProjectsButton?.addEventListener("click", async () => {
@@ -1926,7 +2457,9 @@ createProjectButton?.addEventListener("click", () => {
 
 runButton.addEventListener("click", runCode);
 resetButton.addEventListener("click", () => {
-  editor.setValue(defaultSource);
+  editorHtml.setValue(defaultHtml);
+  editorCss.setValue(defaultCss);
+  editorJs.setValue(defaultSource);
   packageInput.value = defaultPackages;
   runCode();
 });
@@ -2052,7 +2585,9 @@ async function initializeAudiotoolAuth() {
   }
 }
 
-editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, runCode);
+for (const ed of [editorHtml, editorCss, editorJs]) {
+  ed.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, runCode);
+}
 
 resetSessionDashboard("waiting for project connection.");
 runCode();
@@ -2077,8 +2612,8 @@ window.addEventListener("beforeunload", () => {
   let startX = 0;
   let startLeftWidth = 0;
 
-  const minLeft = 300; // px
-  const minRight = 360; // px
+  const minLeft = 280; // px
+  const minRight = 340; // px
   const SPLITTER_SIZE = 8; // matches CSS
 
   function clamp(v, a, b) {
@@ -2118,22 +2653,12 @@ window.addEventListener("beforeunload", () => {
     // clean up inline style if user resizes to default-like proportions
   }
 
-  // Use pointer events when available
   splitter.addEventListener("pointerdown", onPointerDown);
   window.addEventListener("pointermove", onPointerMove);
   window.addEventListener("pointerup", onPointerUp);
 
-  // Fallback for mouse/touch
-  splitter.addEventListener("mousedown", onPointerDown);
-  window.addEventListener("mousemove", onPointerMove);
-  window.addEventListener("mouseup", onPointerUp);
-
-  splitter.addEventListener("touchstart", (e) => onPointerDown(e.touches ? e.touches[0] : e), { passive: true });
-  window.addEventListener("touchmove", (e) => onPointerMove(e.touches ? e.touches[0] : e), { passive: true });
-  window.addEventListener("touchend", onPointerUp);
-
   // double-click resets to initial grid-template
   splitter.addEventListener("dblclick", () => {
-    panes.style.gridTemplateColumns = `minmax(360px, 1fr) ${SPLITTER_SIZE}px minmax(520px, 1.35fr)`;
+    panes.style.gridTemplateColumns = `minmax(320px, 0.92fr) ${SPLITTER_SIZE}px minmax(400px, 1.78fr)`;
   });
 })();
