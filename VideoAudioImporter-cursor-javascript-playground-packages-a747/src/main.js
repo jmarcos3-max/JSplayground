@@ -9,6 +9,8 @@ import {
   getLoginStatus,
 } from "@audiotool/nexus";
 import * as Nexus from "nexusui";
+import { codeSamples } from "./codeSamples.js";
+import { templates } from "./templates.js";
 
 self.MonacoEnvironment = {
   getWorker(_moduleId, label) {
@@ -22,7 +24,7 @@ self.MonacoEnvironment = {
 const editor = monaco.editor.create(document.getElementById("editor-js"), {
   value: `// ==========================================\n// AUDIOTOOL SDK: STARTER TEMPLATE\n// ==========================================\n// Audiotool is modular! To make a sound, you need an Instrument,\n// and you need to connect it with virtual Audio Cables.\n\nconsole.log(\"--- Loading Starter Template ---\");\n\nawait nexus.modify((t) => {\n  // 1. THE INSTRUMENT\n  // Spawn a Heisenberg Synthesizer and move it to coordinate (100, 200)\n  const mySynth = t.create(\"heisenberg\", {\n    displayName: \"Lead Synth\",\n    positionX: 100,\n    positionY: 200,\n    gain: 0.7,\n  });\n\n  // 2. THE EFFECT\n  // Spawn a Delay Pedal to make the synth echo\n  const myDelay = t.create(\"stompboxDelay\", {\n    displayName: \"Echo Pedal\",\n    positionX: 400,\n    positionY: 200,\n    mix: 0.5,\n  });\n\n  // 3. THE ROUTING (Cables)\n  // Plug a virtual audio cable from the Synth's output into the Delay's input\n  t.create(\"desktopAudioCable\", {\n    fromSocket: mySynth.fields.audioOutput.location,\n    toSocket: myDelay.fields.audioInput.location,\n  });\n});\n\nconsole.log(\"> Success: Synth is wired to the Delay pedal!\");\nconsole.log(\"> Pro tip: Try changing the synth 'gain' or the Delay 'mix' value.\");`,
   language: "javascript",
-  theme: "vs-dark",
+  theme: "vs",
   automaticLayout: true,
   fontSize: 14,
   minimap: { enabled: false },
@@ -77,130 +79,120 @@ if (!window.__AUDIOTOOL_INTELLISENSE_LOADED__) {
 // ==========================================
 // TEMPLATE MANAGER
 // ==========================================
-const templates = {
-  offline: `// ==========================================
-// TEMPLATE: OFFLINE MODE (WITH NEXUS UI)
+
+// Default template on load
+editor.setValue(templates.offline);
+
 // ==========================================
-// Offline mode uses a local (unsynced) document. We use NexusUI to draw controls.
-
-console.log("--- Loading Offline Template ---");
-
-// 1. Spawn a Heisenberg synth in the local engine
-let mySynth;
-await nexus.modify((t) => {
-  mySynth = t.create("heisenberg", { positionX: 100, positionY: 100, gain: 0.7 });
-});
-console.log("> Synth created in memory.");
-
-// 2. Draw a visual knob on the screen
-const uiContainer = document.getElementById("nexus-ui-container");
-uiContainer.innerHTML = "<div style='color:#ccc; margin-bottom:10px;'>Synth Gain</div>";
-
-const dial = new Nexus.Dial(uiContainer, {
-  size: [100, 100],
-  interaction: "radial",
-  mode: "absolute",
-  min: 0,
-  max: 1,
-  value: 0.7,
-});
-
-// 3. Bridge the visual knob to the engine
-dial.on("change", async (v) => {
-  try {
-    if (mySynth?.fields?.gain) {
-      await nexus.modify((t) => t.update(mySynth.fields.gain, v));
-      console.log("> Engine gain updated to: " + v.toFixed(2));
-    }
-  } catch (err) {
-    console.warn("Update failed:", err);
-  }
-});`,
-
-  online: `// ==========================================
-// TEMPLATE: CLOUD SYNC & ROUTING
+// SAMPLES GALLERY (minimal wiring)
 // ==========================================
-// 1. Click 'Login' at the top.
-// 2. Choose a project (List Projects) or paste a Project UUID.
-// 3. Click 'Connect Project'.
-// 4. Hit Run, then 'Open Project' to see it in the Studio UI.
+{
+  const modal = document.getElementById("samples-modal");
+  const openBtn = document.getElementById("browse-samples-btn");
+  const closeBtn = document.getElementById("close-samples-btn");
 
-console.log("--- Loading Cloud Template ---");
+  const open = () => {
+    if (!modal) return;
+    modal.style.display = "flex";
+    modal.setAttribute("aria-hidden", "false");
+    closeBtn?.focus?.();
+  };
+  const close = () => {
+    if (!modal) return;
+    modal.style.display = "none";
+    modal.setAttribute("aria-hidden", "true");
+    openBtn?.focus?.();
+  };
 
-await nexus.modify((t) => {
-  const mySynth = t.create("heisenberg", {
-    displayName: "Code-Generated Synth",
-    positionX: 100,
-    positionY: 200,
-    gain: 0.7,
+  openBtn?.addEventListener("click", open);
+  closeBtn?.addEventListener("click", close);
+
+  modal?.addEventListener("click", (e) => {
+    if (e.target === modal) close();
   });
 
-  const myDelay = t.create("stompboxDelay", {
-    displayName: "Code-Generated Delay",
-    positionX: 400,
-    positionY: 200,
-    mix: 0.6,
-    feedbackFactor: 0.4,
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && modal?.style.display === "flex") close();
   });
 
-  t.create("desktopAudioCable", {
-    fromSocket: mySynth.fields.audioOutput.location,
-    toSocket: myDelay.fields.audioInput.location,
+  document.querySelectorAll(".load-sample-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const key = btn.getAttribute("data-sample");
+      if (!key || !codeSamples[key]) return;
+      editor.setValue(codeSamples[key]);
+      logToConsole(`Loaded Sample: ${key}`);
+      close();
+    });
   });
-});
-
-console.log("> Success: Devices spawned and cables routed.");
-console.log("> If connected, check your Audiotool Studio tab now!");`,
-
-  cheatsheet: `// ==========================================
-// TEMPLATE: SDK CHEAT SHEET
-// ==========================================
-// Quick vocabulary reference + a live way to discover device knobs.
-//
-// Pro tip: type t.create(" then press Ctrl+Space to see suggestions.
-
-/*
---- COMMON DEVICES (type keys) ---
-Synths:
-  - "heisenberg"
-  - "bassline"
-  - "tonematrix"
-  - "machiniste"
-
-Effects:
-  - "stompboxDelay"
-  - "stompboxReverb"
-  - "stompboxChorus"
-  - "stompboxCompressor"
-
-Routing:
-  - "desktopAudioCable"
-  - "desktopNoteCable"
-
---- COMMON create(...) config keys ---
-  - positionX, positionY
-  - displayName
-
---- HOW TO DISCOVER REAL FIELDS / KNOBS ---
-Create a device, then inspect its fields:
-*/
-
-await nexus.modify((t) => {
-  const testDevice = t.create("heisenberg", { positionX: 100, positionY: 100 });
-  console.log("Heisenberg entityType:", testDevice.entityType);
-  console.log("Top-level field keys:", Object.keys(testDevice.fields));
-});`,
-};
-
-const templateSelector = document.getElementById("template-selector");
-if (templateSelector) {
-  templateSelector.addEventListener("change", (e) => {
-    const selectedKey = e.target.value;
-    editor.setValue(templates[selectedKey] ?? templates.offline);
-  });
-  templateSelector.value = "offline";
-  editor.setValue(templates.offline);
 }
+
+// ==========================================
+// TEMPLATES GALLERY (hybrid)
+// ==========================================
+{
+  const modal = document.getElementById("templates-modal");
+  const openBtn = document.getElementById("browse-templates-btn");
+  const closeBtn = document.getElementById("close-templates-btn");
+
+  const open = () => {
+    if (!modal) return;
+    modal.style.display = "flex";
+    modal.setAttribute("aria-hidden", "false");
+    closeBtn?.focus?.();
+  };
+  const close = () => {
+    if (!modal) return;
+    modal.style.display = "none";
+    modal.setAttribute("aria-hidden", "true");
+    openBtn?.focus?.();
+  };
+
+  openBtn?.addEventListener("click", open);
+  closeBtn?.addEventListener("click", close);
+  modal?.addEventListener("click", (e) => {
+    if (e.target === modal) close();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && modal?.style.display === "flex") close();
+  });
+
+  document.querySelectorAll(".load-template-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const key = btn.getAttribute("data-template");
+      if (!key || !templates[key]) return;
+      editor.setValue(templates[key]);
+      logToConsole(`Loaded Template: ${key}`);
+      close();
+    });
+  });
+}
+
+// ==========================================
+// QUICK INSERT (minimal)
+// ==========================================
+document.querySelectorAll(".insert-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const codeToInsert = (btn.getAttribute("data-code") || "") + "";
+    if (!codeToInsert) return;
+
+    const position = editor.getPosition();
+    if (!position) return;
+
+    editor.executeEdits("quick-insert", [
+      {
+        range: new monaco.Range(
+          position.lineNumber,
+          position.column,
+          position.lineNumber,
+          position.column,
+        ),
+        text: codeToInsert,
+        forceMoveMarkers: true,
+      },
+    ]);
+    editor.focus();
+  });
+});
 
 const consoleOutput = document.getElementById("console-output");
 
@@ -233,8 +225,11 @@ const authStatus = document.getElementById("auth-status");
 const listProjectsBtn = document.getElementById("list-projects-btn");
 const projectsMenu = document.getElementById("projects-menu");
 const openProjectBtn = document.getElementById("open-project-btn");
+const projectNameBadge = document.getElementById("project-name-badge");
 
 let connectedProjectId = "";
+let connectedProjectName = "";
+
 
 function getRedirectUrl() {
   const url = new URL(window.location.href);
@@ -266,6 +261,8 @@ async function initAuth() {
 
     openProjectBtn.disabled = true;
     connectedProjectId = "";
+    connectedProjectName = "";
+    if (projectNameBadge) projectNameBadge.textContent = "No project";
   } catch (error) {
     logToConsole(`Auth Error: ${error.message}`, true);
   }
@@ -318,7 +315,7 @@ authBtn.addEventListener("click", async () => {
   }
 });
 
-async function connectToProject(projectId) {
+async function connectToProject(projectId, displayNameHint) {
   if (!audiotoolClient) {
     logToConsole("You must Login first!", true);
     return;
@@ -345,10 +342,26 @@ async function connectToProject(projectId) {
     window.__NEXUS_INSTANCE__ = nexus;
     window.__NEXUS_MODE__ = "synced";
 
-    authStatus.textContent = `Status: Synced to ${projectId.substring(0, 8)}...`;
+    // Resolve a human-friendly project name
+    let projectName = (displayNameHint || "").trim();
+    if (!projectName) {
+      try {
+        const resp = await audiotoolClient.api.projectService.getProject({
+          name: `projects/${projectId}`,
+        });
+        projectName = resp?.project?.displayName?.trim() || "";
+      } catch {
+        // ignore, fallback below
+      }
+    }
+    if (!projectName) projectName = projectId;
+
+    authStatus.textContent = `Status: Synced to ${projectName}`;
     logToConsole("Cloud Sync Ready! Your code now updates the real project.");
     connectedProjectId = projectId;
     openProjectBtn.disabled = false;
+    connectedProjectName = projectName;
+    if (projectNameBadge) projectNameBadge.textContent = projectName;
   } catch (err) {
     logToConsole(`Connect Error: ${err.message}`, true);
     console.error(err);
@@ -370,6 +383,7 @@ openProjectBtn.addEventListener("click", () => {
 
 function setProjectsMenuOpen(isOpen) {
   projectsMenu.hidden = !isOpen;
+  listProjectsBtn.setAttribute("aria-expanded", String(isOpen));
   if (isOpen) {
     projectsMenu.innerHTML = `<div class="project-subtitle">Loading projects…</div>`;
   }
@@ -380,7 +394,16 @@ document.addEventListener("click", (e) => {
   const dropdown = document.getElementById("projects-dropdown");
   if (dropdown && !dropdown.contains(e.target)) {
     projectsMenu.hidden = true;
+    listProjectsBtn.setAttribute("aria-expanded", "false");
   }
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape") return;
+  if (projectsMenu.hidden) return;
+  projectsMenu.hidden = true;
+  listProjectsBtn.setAttribute("aria-expanded", "false");
+  listProjectsBtn.focus();
 });
 
 listProjectsBtn.addEventListener("click", async () => {
@@ -414,7 +437,7 @@ listProjectsBtn.addEventListener("click", async () => {
         const subtitle = projectId ? `UUID: ${projectId}` : p.name;
         const creator = p.creatorName ? `by ${p.creatorName.split("/").pop()}` : "";
         return `
-          <div class="project-row" data-project-id="${projectId}">
+          <div class="project-row" role="menuitem" tabindex="0" data-project-id="${projectId}" data-project-name="${title.replaceAll('"', "&quot;")}">
             <div>
               <div class="project-title">${title}</div>
               <div class="project-subtitle">${subtitle}</div>
@@ -428,13 +451,20 @@ listProjectsBtn.addEventListener("click", async () => {
     projectsMenu.querySelectorAll(".project-row").forEach((row) => {
       row.addEventListener("click", async () => {
         const projectId = row.getAttribute("data-project-id") || "";
+        const projectName = row.getAttribute("data-project-name") || "";
         if (!projectId) {
           logToConsole("Could not extract project UUID from selection.", true);
           return;
         }
         projectInput.value = projectId;
         projectsMenu.hidden = true;
-        await connectToProject(projectId);
+        listProjectsBtn.setAttribute("aria-expanded", "false");
+        await connectToProject(projectId, projectName);
+      });
+      row.addEventListener("keydown", async (e) => {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        e.preventDefault();
+        row.click();
       });
     });
   } catch (err) {
