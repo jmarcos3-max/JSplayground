@@ -9,15 +9,21 @@ console.log("--- Loading Offline Template ---");
 // 1. Spawn a Heisenberg synth in the local engine
 let mySynth;
 await nexus.modify((t) => {
+  // You were right! 'gain' is the correct property.
   mySynth = t.create("heisenberg", { positionX: 100, positionY: 100, gain: 0.7 });
 });
 console.log("> Synth created in memory.");
 
-// 2. Draw a visual knob on the screen
+// 2. Load the NexusUI Library dynamically (This prevents the ReferenceError)
+const NexusModule = await import("https://esm.sh/nexusui");
+const NexusLib = NexusModule.default || NexusModule;
+
+// 3. Draw a visual knob on the screen
 const uiContainer = document.getElementById("nexus-ui-container");
 uiContainer.innerHTML = "<div style='color:#ccc; margin-bottom:10px;'>Synth Gain</div>";
 
-const dial = new Nexus.Dial(uiContainer, {
+// Use the imported 'NexusLib' to draw the dial
+const dial = new NexusLib.Dial(uiContainer, {
   size: [100, 100],
   interaction: "radial",
   mode: "absolute",
@@ -26,9 +32,10 @@ const dial = new Nexus.Dial(uiContainer, {
   value: 0.7,
 });
 
-// 3. Bridge the visual knob to the engine
+// 4. Bridge the visual knob to the engine
 dial.on("change", async (v) => {
   try {
+    // Restored to your original, correct code!
     if (mySynth?.fields?.gain) {
       await nexus.modify((t) => t.update(mySynth.fields.gain, v));
       console.log("> Engine gain updated to: " + v.toFixed(2));

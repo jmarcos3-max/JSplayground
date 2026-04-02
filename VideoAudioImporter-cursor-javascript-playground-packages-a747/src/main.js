@@ -167,33 +167,6 @@ editor.setValue(templates.offline);
   });
 }
 
-// ==========================================
-// QUICK INSERT (minimal)
-// ==========================================
-document.querySelectorAll(".insert-btn").forEach((btn) => {
-  btn.addEventListener("click", () => {
-    const codeToInsert = (btn.getAttribute("data-code") || "") + "";
-    if (!codeToInsert) return;
-
-    const position = editor.getPosition();
-    if (!position) return;
-
-    editor.executeEdits("quick-insert", [
-      {
-        range: new monaco.Range(
-          position.lineNumber,
-          position.column,
-          position.lineNumber,
-          position.column,
-        ),
-        text: codeToInsert,
-        forceMoveMarkers: true,
-      },
-    ]);
-    editor.focus();
-  });
-});
-
 const consoleOutput = document.getElementById("console-output");
 
 function logToConsole(msg, isError = false) {

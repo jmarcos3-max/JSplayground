@@ -77,6 +77,7 @@
       gap: 14px;
       align-items: stretch;
       width: 100%;
+      min-width: 0;
     }
 
     .toolbar-group {
@@ -90,7 +91,8 @@
       min-width: 220px;
     }
 
-    .toolbar-group-wide { flex: 1 1 auto; min-width: 360px; }
+    /* Allow shrinking so PROJECT controls wrap instead of clipping when the window is narrow */
+    .toolbar-group-wide { flex: 1 1 auto; min-width: 0; }
 
     .toolbar-label {
       font-size: 11px;
@@ -218,18 +220,43 @@
     }
 
     /* 3. Main Workspace Layout */
-    #main-content { display: flex; flex-grow: 1; height: calc(100vh - 55px - 52px); }
+    /* min-width: 0 on flex items fixes Safari (and some Chrome) first-paint overflow until resize */
+    #main-content {
+      display: flex;
+      flex-grow: 1;
+      min-width: 0;
+      height: calc(100vh - 55px - 52px);
+    }
 
-    #left-pane { flex: 1 1 0; min-width: 320px; display: flex; flex-direction: column; background: var(--bg-panel); }
-    #right-pane { flex: 1 1 0; min-width: 320px; display: flex; flex-direction: column; background: var(--bg-base); }
+    #left-pane {
+      flex: 1 1 0;
+      min-width: 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg-panel);
+      /* Keep header controls inside the pane so they are not painted under the splitter (next sibling). */
+      overflow-x: hidden;
+    }
+    #right-pane {
+      flex: 1 1 0;
+      min-width: 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg-base);
+    }
 
     #splitter {
+      flex: 0 0 auto;
       width: 10px;
       cursor: col-resize;
       background: linear-gradient(to right, transparent, rgba(255,255,255,0.05), transparent);
       border-left: 1px solid var(--border-color);
       border-right: 1px solid var(--border-color);
       position: relative;
+      flex-shrink: 0;
+      touch-action: none;
     }
     #splitter::after {
       content: "";
@@ -247,7 +274,7 @@
       outline-offset: -2px;
     }
 
-    /* Editor Toolbar */
+    /* Editor toolbar: single row above Monaco (Browse left, Run right) */
     .toolbar {
       padding: 10px 15px;
       background: transparent;
@@ -256,82 +283,58 @@
       align-items: center;
       border-bottom: 1px solid var(--border-color);
     }
-    .toolbar h3 { margin: 0; font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
 
-    /* Make editor header match pane headers */
+    /* Undo global style.css .toolbar { display:grid } for this bar */
     .toolbar.pane-header {
+      display: flex;
+      grid-template-columns: unset;
+      grid-template-rows: unset;
+      flex-direction: row;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
       padding: 8px 15px;
       background: var(--bg-header);
       border-top: none;
       border-radius: 0;
-      gap: 10px;
-      flex-wrap: nowrap;
-    }
-
-    .toolbar.pane-header h3 {
-      flex: 1 1 auto;
-      min-width: 0;
-      padding-left: 12px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .editor-controls {
-      flex: 0 1 auto;
-      min-width: 0;
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      flex-wrap: nowrap;
-      justify-content: flex-end;
-      overflow-x: auto;
-      max-width: 100%;
-      padding-bottom: 2px;
-    }
-
-    .editor-controls::-webkit-scrollbar { height: 6px; }
-
-    #editor-js { flex-grow: 1; }
-
-    /* (removed editor bottom bar; controls live in header) */
-
-    /* Quick Insert toolbar */
-    #quick-insert-bar {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      padding: 8px 12px;
+      border: none;
       border-bottom: 1px solid var(--border-color);
-      background: rgba(255, 255, 255, 0.55);
-      overflow-x: auto;
-      white-space: nowrap;
+      min-width: 0;
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
     }
-    #quick-insert-bar::-webkit-scrollbar { height: 6px; }
-    #quick-insert-label {
+
+    .editor-toolbar-left {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .editor-toolbar-title {
+      margin: 0;
       font-size: 11px;
+      color: var(--text-muted);
       text-transform: uppercase;
       letter-spacing: 1px;
-      color: var(--text-muted);
-      font-weight: 800;
-      margin-right: 2px;
-      user-select: none;
-    }
-    .insert-btn {
-      background: rgba(255, 255, 255, 0.92);
-      color: #111827;
-      border: 1px solid rgba(31, 41, 55, 0.22);
-      border-radius: 999px;
-      padding: 6px 10px;
-      font-size: 12px;
       font-weight: 700;
-      cursor: pointer;
-      transition: background 0.15s ease, border-color 0.15s ease;
+      line-height: 1;
+      padding-left: 12px;
+      padding-right: 6px;
+      flex-shrink: 0;
     }
-    .insert-btn:hover {
-      background: rgba(255, 255, 255, 1);
-      border-color: rgba(31, 41, 55, 0.32);
-      transform: none;
+
+    .toolbar.pane-header #run-btn {
+      flex-shrink: 0;
+    }
+
+    #editor-js {
+      flex-grow: 1;
+      min-height: 0;
+      min-width: 0;
     }
 
     /* Projects dropdown */
@@ -583,23 +586,15 @@
   <div id="main-content">
     <!-- LEFT SIDE: The Code Editor -->
     <div id="left-pane">
-      <div class="toolbar pane-header">
-        <h3>JavaScript Editor</h3>
-        <div class="editor-controls">
+      <div class="toolbar pane-header" role="toolbar" aria-label="JavaScript editor">
+        <div class="editor-toolbar-left">
+          <h3 class="editor-toolbar-title">JavaScript Editor</h3>
           <button id="browse-samples-btn" type="button" class="btn-secondary">Browse Samples</button>
           <button id="browse-templates-btn" type="button" class="btn-secondary">Browse Templates</button>
-          <button id="run-btn" type="button" class="action-btn">Run Code ▷</button>
         </div>
+        <button id="run-btn" type="button" class="action-btn">Run Code ▷</button>
       </div>
-      <div id="quick-insert-bar" aria-label="Quick insert code snippets">
-        <span id="quick-insert-label">Quick insert</span>
-        <button type="button" class="insert-btn" title="Insert a nexus.modify transaction block (where you create/update devices)" aria-label="Insert modify block" data-code='await nexus.modify((t) => {\n  \n});\n'>+ modify()</button>
-        <button type="button" class="insert-btn" title="Insert code to create a Heisenberg synth device" aria-label="Insert Heisenberg synth" data-code='const synth = t.create("heisenberg", { positionX: 100, positionY: 100, gain: 0.7 });\n'>+ Heisenberg</button>
-        <button type="button" class="insert-btn" title="Insert code to create a Delay effect (stompboxDelay)" aria-label="Insert Delay effect" data-code='const delay = t.create("stompboxDelay", { positionX: 380, positionY: 100, mix: 0.5, feedbackFactor: 0.35 });\n'>+ Delay</button>
-        <button type="button" class="insert-btn" title="Insert code to connect synth → delay using a desktopAudioCable (expects variables named synth and delay)" aria-label="Insert audio cable" data-code='t.create("desktopAudioCable", { fromSocket: synth.fields.audioOutput.location, toSocket: delay.fields.audioInput.location });\n'>+ Audio cable</button>
-        <button type="button" class="insert-btn" title="Insert code to create ToneMatrix + Machiniste and connect them with a desktopNoteCable" aria-label="Insert sequencer to drums chain" data-code='const tm = t.create("tonematrix", { positionX: 100, positionY: 260 });\nconst drums = t.create("machiniste", { positionX: 420, positionY: 260 });\nt.create("desktopNoteCable", { fromSocket: tm.fields.noteOutput.location, toSocket: drums.fields.notesInput.location });\n'>+ Seq→Drums</button>
-      </div>
-      <div id="editor-js"></div>
+      <div id="editor-js" aria-label="Code editor"></div>
     </div>
 
     <div id="splitter" role="separator" aria-orientation="vertical" tabindex="0" aria-label="Resize editor and preview"></div>
@@ -633,7 +628,7 @@
       const container = document.getElementById("main-content");
       if (!splitter || !left || !right || !container) return;
 
-      const MIN_PX = 320;
+      const MIN_PX = 280;
 
       function setLeftWidth(px) {
         const bounds = container.getBoundingClientRect();
@@ -649,10 +644,10 @@
         setLeftWidth(bounds.width * ratio);
       }
 
-      // Default 50/50 on first load (unless already set by previous drag)
       if (!left.style.width) setSplitByRatio(0.5);
 
       let dragging = false;
+      let splitterPointerId = -1;
 
       function onPointerMove(e) {
         if (!dragging) return;
@@ -664,17 +659,24 @@
         if (!dragging) return;
         dragging = false;
         document.body.style.cursor = "";
-        splitter.releasePointerCapture?.(0);
+        if (splitterPointerId >= 0) {
+          splitter.releasePointerCapture?.(splitterPointerId);
+          splitterPointerId = -1;
+        }
         window.removeEventListener("pointermove", onPointerMove);
         window.removeEventListener("pointerup", stopDrag);
+        window.removeEventListener("pointercancel", stopDrag);
       }
 
       splitter.addEventListener("pointerdown", (e) => {
+        if (e.button !== 0 && e.pointerType === "mouse") return;
         dragging = true;
+        splitterPointerId = e.pointerId;
         document.body.style.cursor = "col-resize";
         splitter.setPointerCapture?.(e.pointerId);
         window.addEventListener("pointermove", onPointerMove);
         window.addEventListener("pointerup", stopDrag);
+        window.addEventListener("pointercancel", stopDrag);
       });
 
       splitter.addEventListener("keydown", (e) => {
@@ -686,7 +688,6 @@
       });
 
       window.addEventListener("resize", () => {
-        // Keep the current ratio-ish when resizing window
         const bounds = container.getBoundingClientRect();
         const current = left.getBoundingClientRect().width;
         const ratio = bounds.width ? current / bounds.width : 0.5;

@@ -96,9 +96,8 @@ dial.on("change", async (v) => {
 console.log("--- Loading sample: Mini Synth Dashboard ---");
 
 // 1) Spawn an offline synth + reverb, and wire them
-let synth;
 await nexus.modify((t) => {
-  synth = t.create("heisenberg", { positionX: 120, positionY: 120, gain: 0.7 });
+  const synth = t.create("heisenberg", { positionX: 120, positionY: 120, gain: 0.7 });
   const reverb = t.create("stompboxReverb", { positionX: 420, positionY: 120, mix: 0.45 });
 
   t.create("desktopAudioCable", {
@@ -111,47 +110,30 @@ console.log("> Headless synth + reverb ready.");
 // 2) Build a tiny dashboard UI
 const ui = document.getElementById("nexus-ui-container");
 ui.innerHTML = \`
-  <div style="font-weight:900; margin-bottom:14px;">Mini Synth Dashboard</div>
+  <div style="font-weight:900; margin-bottom:14px; color: var(--text);">Mini Synth Dashboard</div>
   <div style="
     display:flex;
-    gap:24px;
+    justify-content:center;
     align-items:flex-end;
-    background: rgba(255,255,255,0.55);
+    background: rgba(255,255,255,0.05); /* Adjusted slightly for dark/light theme compat */
     padding: 16px;
     border-radius: 14px;
-    border: 1px solid rgba(31,41,55,0.14);
+    border: 1px solid var(--border);
   ">
-    <div id="vol-container">
-      <div style="font-size: 11px; color: rgba(107,114,128,1); margin-bottom: 8px; text-align:center; font-weight:800; letter-spacing:1px;">GAIN</div>
-    </div>
     <div id="piano-container"></div>
   </div>
 \`;
 
-// 3) NexusUI controls (uses the provided Nexus object)
-const volume = new Nexus.Slider("#vol-container", {
-  size: [30, 120],
-  mode: "absolute",
-  min: 0,
-  max: 1,
-  value: 0.7,
-});
+// 3) Dynamically load NexusUI (The Fix!)
+const NexusModule = await import("https://esm.sh/nexusui");
+const NexusLib = NexusModule.default || NexusModule;
 
-const piano = new Nexus.Piano("#piano-container", {
+// 4) NexusUI piano (slider temporarily removed)
+const piano = new NexusLib.Piano("#piano-container", {
   size: [320, 110],
   mode: "button",
   lowNote: 48,
   highNote: 60,
-});
-
-// 4) Bridge slider to synth gain (safe field)
-volume.on("change", async (v) => {
-  try {
-    await nexus.modify((t) => t.update(synth.fields.gain, v));
-    console.log("> gain:", v.toFixed(2));
-  } catch (err) {
-    console.warn("Update failed:", err);
-  }
 });
 
 // 5) Piano key feedback (UI-only demo)
@@ -161,6 +143,6 @@ piano.on("change", (note) => {
   }
 });
 
-console.log("> Dashboard rendered. Move the slider and click piano keys.");`,
+console.log("> Dashboard rendered. Click piano keys.");`,
 };
 
