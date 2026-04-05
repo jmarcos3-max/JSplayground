@@ -1,3 +1,6 @@
+/** Matched before Run so the cloud routing template does not execute against the offline engine only. */
+export const CLOUD_STUDIO_RUN_MARKER = "TEMPLATE: CLOUD SYNC & ROUTING";
+
 export const templates = {
   offline: `// ==========================================
 // TEMPLATE: OFFLINE MODE (WITH NEXUS UI)
@@ -49,7 +52,7 @@ dial.on("change", async (v) => {
 // TEMPLATE: CLOUD SYNC & ROUTING
 // ==========================================
 // 1. Click 'Login' at the top.
-// 2. Choose a project (List Projects) or paste a Project UUID.
+// 2. Choose a project (List Projects) or paste a Studio URL / project ID.
 // 3. Click 'Connect Project'.
 // 4. Hit Run, then 'Open Project' to see it in the Studio UI.
 
@@ -119,25 +122,3 @@ await nexus.modify((t) => {
   console.log("Top-level field keys:", Object.keys(testDevice.fields));
 });`,
 };
-
-export const templateMeta = [
-  {
-    key: "offline",
-    pill: "Offline",
-    title: "Offline UI (NexusUI)",
-    desc: "Draw controls with NexusUI and update the local engine.",
-  },
-  {
-    key: "online",
-    pill: "Cloud",
-    title: "Cloud Routing (Real Studio)",
-    desc: "Spawn devices + route audio; best when connected to a project.",
-  },
-  {
-    key: "cheatsheet",
-    pill: "Reference",
-    title: "SDK Cheat Sheet",
-    desc: "Vocabulary + how to discover fields/knobs.",
-  },
-];
-

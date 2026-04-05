@@ -1,3 +1,5 @@
+import { templates } from "./templates.js";
+
 export const codeSamples = {
   starterChain: `// ==========================================
 // SAMPLE: HEISENBERG → DELAY (AUDIO CABLE)
@@ -144,5 +146,10 @@ piano.on("change", (note) => {
 });
 
 console.log("> Dashboard rendered. Click piano keys.");`,
+
+  /** Full editor starters (same source as `templates.js`). */
+  templateOffline: templates.offline,
+  templateOnline: templates.online,
+  templateCheatsheet: templates.cheatsheet,
 };
 

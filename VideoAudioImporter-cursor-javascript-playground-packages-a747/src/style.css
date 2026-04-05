@@ -1288,6 +1288,7 @@ html.theme-light .console-section summary {
   content: "▾";
 }
 
+/* Default (dark-theme demos). Playground index.html uses body #console-output to override. */
 #console-output {
   margin: 10px 0 0;
   padding: 12px;
