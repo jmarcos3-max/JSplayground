@@ -15,7 +15,7 @@ const steps = [
   },
   {
     id: "editor",
-    target: "#left-pane",
+    target: "#editor-js",
     title: "JavaScript editor",
     body: "Load a sample to get started fast, then use Run Code to apply changes and generate UI.",
   },
@@ -101,12 +101,16 @@ function positionCard(card, targetEl) {
 
 function positionSpotlight(spotlight, targetEl) {
   const rect = targetEl.getBoundingClientRect();
-  const pad = 8;
+  const pad = rect.height > 260 || rect.width > 520 ? 3 : 8;
+  const top = Math.max(6, rect.top - pad);
+  const left = Math.max(6, rect.left - pad);
+  const right = Math.min(window.innerWidth - 6, rect.right + pad);
+  const bottom = Math.min(window.innerHeight - 6, rect.bottom + pad);
 
-  spotlight.style.top = `${rect.top - pad}px`;
-  spotlight.style.left = `${rect.left - pad}px`;
-  spotlight.style.width = `${rect.width + pad * 2}px`;
-  spotlight.style.height = `${rect.height + pad * 2}px`;
+  spotlight.style.top = `${top}px`;
+  spotlight.style.left = `${left}px`;
+  spotlight.style.width = `${Math.max(12, right - left)}px`;
+  spotlight.style.height = `${Math.max(12, bottom - top)}px`;
 }
 
 export function startOnboardingTour(fromUserClick = false) {
