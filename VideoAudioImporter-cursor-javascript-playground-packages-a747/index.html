@@ -1160,6 +1160,11 @@
       background: rgba(255, 255, 255, 0.95);
       border-color: rgba(15, 118, 110, 0.28);
     }
+    .sample-btn.is-selected {
+      background: rgba(15, 118, 110, 0.12);
+      border-color: rgba(15, 118, 110, 0.45);
+      box-shadow: 0 0 0 2px rgba(15, 118, 110, 0.14);
+    }
     html.pg-theme-dark .sample-btn {
       background: rgba(255, 255, 255, 0.06);
       border-color: var(--border-color);
@@ -1167,6 +1172,11 @@
     html.pg-theme-dark .sample-btn:hover {
       background: rgba(45, 212, 191, 0.1);
       border-color: rgba(45, 212, 191, 0.28);
+    }
+    html.pg-theme-dark .sample-btn.is-selected {
+      background: rgba(45, 212, 191, 0.16);
+      border-color: rgba(45, 212, 191, 0.5);
+      box-shadow: 0 0 0 2px rgba(45, 212, 191, 0.14);
     }
     .sample-pill {
       font-size: 11px;
@@ -1291,6 +1301,20 @@
       background: rgba(255, 255, 255, 0.12);
       border-color: rgba(45, 212, 191, 0.28);
       color: var(--accent-hover);
+    }
+    .samples-modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border-color);
+    }
+    #import-sample-btn:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      box-shadow: none;
+      transform: none;
     }
 
     /* Browse = secondary (outline) so Run / Connect Project stay the clear primary */
@@ -1603,7 +1627,6 @@
                 Run Code
               </button>
             </div>
-
             <div class="empty-workflows" role="note">
               <div class="empty-workflow empty-workflow--default">
                 <div class="empty-workflow-head empty-workflow-head--default">
@@ -1821,6 +1844,9 @@
             <div class="sample-meta">Spawn devices + cables; best when connected to a project.</div>
           </div>
         </button>
+      </div>
+      <div class="samples-modal-actions">
+        <button id="import-sample-btn" type="button" class="action-btn" disabled>Import to Editor</button>
       </div>
     </div>
   </div>

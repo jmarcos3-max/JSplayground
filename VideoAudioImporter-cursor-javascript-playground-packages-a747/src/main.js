@@ -278,6 +278,7 @@ document.addEventListener("click", (event) => {
 document.addEventListener("click", (event) => {
   const takeTour = event.target.closest("#take-tour-btn");
   if (!takeTour) return;
+  if (event.__pgTourHandled) return;
   event.preventDefault();
   startOnboardingTour(true);
 });

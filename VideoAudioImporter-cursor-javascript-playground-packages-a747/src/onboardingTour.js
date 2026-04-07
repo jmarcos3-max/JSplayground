@@ -2,6 +2,12 @@ const TOUR_KEY = "pg_onboarding_dismissed_v2";
 
 const steps = [
   {
+    id: "welcome",
+    target: "#title-bar",
+    title: "Welcome to the JSPlayground!",
+    body: "This is your creative sandbox for the Audiotool Nexus SDK. In this space, code transforms into signal, rhythm, and structure. You can automate studio tasks, build custom MIDI tools, or search cloud samples with a single script. Let’s get you wired in.",
+  },
+  {
     id: "appearance",
     target: "#appearance-menu-btn",
     title: "Appearance",
@@ -178,7 +184,11 @@ export function startOnboardingTour(fromUserClick = false) {
     // Reflow editor/panes after overlay teardown so laptop layouts
     // return to their pre-tour sizing immediately.
     requestAnimationFrame(() => {
-      window.dispatchEvent(new CustomEvent("pg:onboarding-ended"));
+      window.dispatchEvent(
+        new CustomEvent("pg:onboarding-ended", {
+          detail: { fromUserClick },
+        }),
+      );
       window.dispatchEvent(new Event("resize"));
       requestAnimationFrame(() => window.dispatchEvent(new Event("resize")));
     });
@@ -239,7 +249,8 @@ export function initOnboardingTour() {
 
   const tourBtn = document.getElementById("take-tour-btn");
   if (tourBtn) {
-    tourBtn.addEventListener("click", () => {
+    tourBtn.addEventListener("click", (event) => {
+      event.__pgTourHandled = true;
       try {
         localStorage.removeItem(TOUR_KEY);
       } catch {
