@@ -155,6 +155,13 @@ export function startOnboardingTour(fromUserClick = false) {
     } catch {
       // ignore
     }
+
+    // Reflow editor/panes after overlay teardown so laptop layouts
+    // return to their pre-tour sizing immediately.
+    requestAnimationFrame(() => {
+      window.dispatchEvent(new Event("resize"));
+      requestAnimationFrame(() => window.dispatchEvent(new Event("resize")));
+    });
   }
 
   function onKeyDown(event) {
