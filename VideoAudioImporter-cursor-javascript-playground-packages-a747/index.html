@@ -776,6 +776,7 @@
 
     #nexus-ui-container {
       flex-grow: 1;
+      min-height: 300px;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -1402,7 +1403,7 @@
 
     /* 5. Terminal — body#… beats bundled style.css #console-output (which used dark-theme --text) */
     body #console-output {
-      height: 220px;
+      height: clamp(140px, 24vh, 220px);
       box-sizing: border-box;
       background: #f0ebe3;
       color: var(--text-main);
@@ -1416,6 +1417,14 @@
       border: 1px solid rgba(31, 41, 55, 0.12);
       border-radius: 0;
       margin: 0;
+    }
+    @media (max-height: 820px) {
+      #nexus-ui-container {
+        min-height: 340px;
+      }
+      body #console-output {
+        height: clamp(120px, 20vh, 170px);
+      }
     }
     html.pg-theme-dark body #console-output {
       background: #0d1218;
