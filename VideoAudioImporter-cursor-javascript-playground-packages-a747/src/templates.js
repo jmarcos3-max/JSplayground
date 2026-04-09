@@ -1,3 +1,6 @@
+/** Matched before Run so the cloud routing template does not execute against the offline engine only. */
+export const CLOUD_STUDIO_RUN_MARKER = "TEMPLATE: CLOUD SYNC & ROUTING";
+
 export const templates = {
   offline: `// ==========================================
 // TEMPLATE: OFFLINE MODE (WITH NEXUS UI)
@@ -49,7 +52,7 @@ dial.on("change", async (v) => {
 // TEMPLATE: CLOUD SYNC & ROUTING
 // ==========================================
 // 1. Click 'Login' at the top.
-// 2. Choose a project (List Projects) or paste a Project UUID.
+// 2. Choose a project (List Projects) or paste a Studio URL / project ID.
 // 3. Click 'Connect Project'.
 // 4. Hit Run, then 'Open Project' to see it in the Studio UI.
 
@@ -69,6 +72,7 @@ await nexus.modify((t) => {
     positionY: 200,
     mix: 0.6,
     feedbackFactor: 0.4,
+    stepLengthIndex: 2,
   });
 
   t.create("desktopAudioCable", {
@@ -83,17 +87,18 @@ console.log("> If connected, check your Audiotool Studio tab now!");`,
   cheatsheet: `// ==========================================
 // TEMPLATE: SDK CHEAT SHEET
 // ==========================================
-// Quick vocabulary reference + a live way to discover device knobs.
+// Quick vocabulary + patterns from https://developer.audiotool.com/js-package-documentation/
 //
 // Pro tip: type t.create(" then press Ctrl+Space to see suggestions.
 
 /*
---- COMMON DEVICES (type keys) ---
+--- COMMON DEVICES (t.create type keys) ---
 Synths:
   - "heisenberg"
   - "bassline"
   - "tonematrix"
   - "machiniste"
+  - "gakki"
 
 Effects:
   - "stompboxDelay"
@@ -102,15 +107,22 @@ Effects:
   - "stompboxCompressor"
 
 Routing:
-  - "desktopAudioCable"
-  - "desktopNoteCable"
+  - "desktopAudioCable"  // fromSocket / toSocket → .fields.audioOutput/.audioInput .location
+  - "desktopNoteCable"   // e.g. tonematrix.fields.noteOutput → machiniste.fields.notesInput
+
+--- TIMELINE (inside nexus.modify) ---
+  - "noteCollection", "note", "noteTrack", "noteRegion"
+  - Musical ticks: import { Ticks } from "@audiotool/nexus/utils"
+    (Beat=quarter, SemiBreve=whole in 4/4 — see docs utils.Ticks)
+
+--- READ ENTITIES (outside modify, document ready) ---
+  - nexus.queryEntities.ofTypes("heisenberg").get()
 
 --- COMMON create(...) config keys ---
-  - positionX, positionY
-  - displayName
+  - positionX, positionY, displayName, gain (many devices)
 
---- HOW TO DISCOVER REAL FIELDS / KNOBS ---
-Create a device, then inspect its fields:
+--- DISCOVER FIELDS ---
+Create a device, then inspect (see log below):
 */
 
 await nexus.modify((t) => {
@@ -119,25 +131,3 @@ await nexus.modify((t) => {
   console.log("Top-level field keys:", Object.keys(testDevice.fields));
 });`,
 };
-
-export const templateMeta = [
-  {
-    key: "offline",
-    pill: "Offline",
-    title: "Offline UI (NexusUI)",
-    desc: "Draw controls with NexusUI and update the local engine.",
-  },
-  {
-    key: "online",
-    pill: "Cloud",
-    title: "Cloud Routing (Real Studio)",
-    desc: "Spawn devices + route audio; best when connected to a project.",
-  },
-  {
-    key: "cheatsheet",
-    pill: "Reference",
-    title: "SDK Cheat Sheet",
-    desc: "Vocabulary + how to discover fields/knobs.",
-  },
-];
-

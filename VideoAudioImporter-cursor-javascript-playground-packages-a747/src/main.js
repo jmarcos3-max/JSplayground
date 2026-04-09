@@ -8,9 +8,22 @@ import {
   createAudiotoolClient,
   getLoginStatus,
 } from "@audiotool/nexus";
-import * as Nexus from "nexusui";
-import { codeSamples } from "./codeSamples.js";
 import { templates } from "./templates.js";
+import { extractProjectId, parseProjectIdFromInput } from "./projectIds.js";
+import { installPlaygroundIntellisense } from "./playgroundIntellisense.js";
+import { ctx } from "./playgroundContext.js";
+import {
+  initPlaygroundConsole,
+  installPlaygroundConsoleForward,
+  logToConsole,
+} from "./playgroundConsole.js";
+import { initAppearanceMenu } from "./appearanceMenu.js";
+import { initSamplesGallery } from "./samplesGallery.js";
+import { syncCloudToolbarEnabled } from "./playgroundCloudToolbar.js";
+import { initProjectsMenu } from "./projectsMenu.js";
+import { initCreateProjectFlow } from "./createProjectFlow.js";
+import { initRunUserCode } from "./runUserCode.js";
+import { initOnboardingTour, startOnboardingTour } from "./onboardingTour.js";
 
 self.MonacoEnvironment = {
   getWorker(_moduleId, label) {
@@ -21,188 +34,108 @@ self.MonacoEnvironment = {
   },
 };
 
-const editor = monaco.editor.create(document.getElementById("editor-js"), {
-  value: `// ==========================================\n// AUDIOTOOL SDK: STARTER TEMPLATE\n// ==========================================\n// Audiotool is modular! To make a sound, you need an Instrument,\n// and you need to connect it with virtual Audio Cables.\n\nconsole.log(\"--- Loading Starter Template ---\");\n\nawait nexus.modify((t) => {\n  // 1. THE INSTRUMENT\n  // Spawn a Heisenberg Synthesizer and move it to coordinate (100, 200)\n  const mySynth = t.create(\"heisenberg\", {\n    displayName: \"Lead Synth\",\n    positionX: 100,\n    positionY: 200,\n    gain: 0.7,\n  });\n\n  // 2. THE EFFECT\n  // Spawn a Delay Pedal to make the synth echo\n  const myDelay = t.create(\"stompboxDelay\", {\n    displayName: \"Echo Pedal\",\n    positionX: 400,\n    positionY: 200,\n    mix: 0.5,\n  });\n\n  // 3. THE ROUTING (Cables)\n  // Plug a virtual audio cable from the Synth's output into the Delay's input\n  t.create(\"desktopAudioCable\", {\n    fromSocket: mySynth.fields.audioOutput.location,\n    toSocket: myDelay.fields.audioInput.location,\n  });\n});\n\nconsole.log(\"> Success: Synth is wired to the Delay pedal!\");\nconsole.log(\"> Pro tip: Try changing the synth 'gain' or the Delay 'mix' value.\");`,
+const initialEditorFont = (() => {
+  const n = parseInt(document.documentElement.dataset.pgEditorFont, 10);
+  return Number.isFinite(n) ? Math.min(18, Math.max(12, n)) : 14;
+})();
+
+ctx.editor = monaco.editor.create(document.getElementById("editor-js"), {
+  value: `// ==========================================\n// AUDIOTOOL SDK: STARTER TEMPLATE\n// ==========================================\n// Audiotool is modular! To make a sound, you need an Instrument,\n// and you need to connect it with virtual Audio Cables.\n\nconsole.log(\"--- Loading Starter Template ---\");\n\nawait nexus.modify((t) => {\n  // 1. THE INSTRUMENT\n  // Spawn a Heisenberg Synthesizer and move it to coordinate (100, 200)\n  const mySynth = t.create(\"heisenberg\", {\n    displayName: \"Lead Synth\",\n    positionX: 100,\n    positionY: 200,\n    gain: 0.7,\n  });\n\n  // 2. THE EFFECT\n  // Spawn a Delay Pedal to make the synth echo\n  const myDelay = t.create(\"stompboxDelay\", {\n    displayName: \"Echo Pedal\",\n    positionX: 400,\n    positionY: 200,\n    mix: 0.5,\n    feedbackFactor: 0.35,\n    stepLengthIndex: 2,\n  });\n\n  // 3. THE ROUTING (Cables)\n  // Plug a virtual audio cable from the Synth's output into the Delay's input\n  t.create(\"desktopAudioCable\", {\n    fromSocket: mySynth.fields.audioOutput.location,\n    toSocket: myDelay.fields.audioInput.location,\n  });\n});\n\nconsole.log(\"> Success: Synth is wired to the Delay pedal!\");\nconsole.log(\"> Pro tip: Try changing the synth 'gain' or the Delay 'mix' value.\");`,
   language: "javascript",
-  theme: "vs",
+  theme: document.documentElement.classList.contains("pg-theme-dark")
+    ? "vs-dark"
+    : "vs",
   automaticLayout: true,
-  fontSize: 14,
+  fontSize: initialEditorFont,
   minimap: { enabled: false },
 });
 
-// ==========================================
-// INJECT AUTOCOMPLETE (INTELLISENSE)
-// ==========================================
-if (!window.__AUDIOTOOL_INTELLISENSE_LOADED__) {
-  window.__AUDIOTOOL_INTELLISENSE_LOADED__ = true;
-  monaco.languages.typescript.javascriptDefaults.setCompilerOptions({
-    allowNonTsExtensions: true,
-    checkJs: true,
-    target: monaco.languages.typescript.ScriptTarget.ES2022,
-  });
-  monaco.languages.typescript.javascriptDefaults.addExtraLib(
-    `
-    declare const nexus: {
-      modify: <T>(callback: (t: Transaction) => Promise<T> | T) => Promise<T>;
-      queryEntities: any;
-    };
+installPlaygroundIntellisense(monaco);
 
-    declare interface Transaction {
-      create(
-        type:
-          | "heisenberg"
-          | "tonematrix"
-          | "machiniste"
-          | "bassline"
-          | "stompboxDelay"
-          | "desktopAudioCable"
-          | "desktopNoteCable",
-        config: {
-          positionX?: number;
-          positionY?: number;
-          displayName?: string;
-          gain?: number;
-          mix?: number;
-          feedbackFactor?: number;
-          fromSocket?: any;
-          toSocket?: any;
-          [key: string]: any;
-        }
-      ): any;
-      update(field: any, value: any): void;
-    }
-  `,
-    "audiotool-playground-intellisense.d.ts",
-  );
-}
-
-// ==========================================
-// TEMPLATE MANAGER
-// ==========================================
-
-// Default template on load
-editor.setValue(templates.offline);
-
-// ==========================================
-// SAMPLES GALLERY (minimal wiring)
-// ==========================================
-{
-  const modal = document.getElementById("samples-modal");
-  const openBtn = document.getElementById("browse-samples-btn");
-  const closeBtn = document.getElementById("close-samples-btn");
-
-  const open = () => {
-    if (!modal) return;
-    modal.style.display = "flex";
-    modal.setAttribute("aria-hidden", "false");
-    closeBtn?.focus?.();
-  };
-  const close = () => {
-    if (!modal) return;
-    modal.style.display = "none";
-    modal.setAttribute("aria-hidden", "true");
-    openBtn?.focus?.();
-  };
-
-  openBtn?.addEventListener("click", open);
-  closeBtn?.addEventListener("click", close);
-
-  modal?.addEventListener("click", (e) => {
-    if (e.target === modal) close();
-  });
-
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && modal?.style.display === "flex") close();
-  });
-
-  document.querySelectorAll(".load-sample-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const key = btn.getAttribute("data-sample");
-      if (!key || !codeSamples[key]) return;
-      editor.setValue(codeSamples[key]);
-      logToConsole(`Loaded Sample: ${key}`);
-      close();
-    });
-  });
-}
-
-// ==========================================
-// TEMPLATES GALLERY (hybrid)
-// ==========================================
-{
-  const modal = document.getElementById("templates-modal");
-  const openBtn = document.getElementById("browse-templates-btn");
-  const closeBtn = document.getElementById("close-templates-btn");
-
-  const open = () => {
-    if (!modal) return;
-    modal.style.display = "flex";
-    modal.setAttribute("aria-hidden", "false");
-    closeBtn?.focus?.();
-  };
-  const close = () => {
-    if (!modal) return;
-    modal.style.display = "none";
-    modal.setAttribute("aria-hidden", "true");
-    openBtn?.focus?.();
-  };
-
-  openBtn?.addEventListener("click", open);
-  closeBtn?.addEventListener("click", close);
-  modal?.addEventListener("click", (e) => {
-    if (e.target === modal) close();
-  });
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && modal?.style.display === "flex") close();
-  });
-
-  document.querySelectorAll(".load-template-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const key = btn.getAttribute("data-template");
-      if (!key || !templates[key]) return;
-      editor.setValue(templates[key]);
-      logToConsole(`Loaded Template: ${key}`);
-      close();
-    });
-  });
-}
-
-const consoleOutput = document.getElementById("console-output");
-
-function logToConsole(msg, isError = false) {
-  const color = isError ? "#ff5555" : "#4af626";
-  consoleOutput.innerHTML += `<div style="color: ${color}; padding: 2px 0;">${msg}</div>`;
-  consoleOutput.scrollTop = consoleOutput.scrollHeight;
-}
-
-if (!window.__PLAYGROUND_CONSOLE_WRAPPED__) {
-  window.__PLAYGROUND_CONSOLE_WRAPPED__ = true;
-  const originalLog = console.log;
-  console.log = (...args) => {
-    originalLog(...args);
-    logToConsole(`> ${args.join(" ")}`);
-  };
-}
+initPlaygroundConsole(document.getElementById("console-output"));
+installPlaygroundConsoleForward();
+initAppearanceMenu();
+ctx.editor.setValue(templates.offline);
+initSamplesGallery();
 
 const audiotoolClientId = "379f8d67-b211-43b2-8a9d-9553aa8aad32";
 const audiotoolScope = "project:write";
+const LAST_CONNECTED_PROJECT_KEY = "audiotool-playground-last-project-id";
 
-let loginStatus = null;
-let audiotoolClient = null;
-let nexus = window.__NEXUS_INSTANCE__ || null;
+ctx.nexus = window.__NEXUS_INSTANCE__ || null;
 
 const authBtn = document.getElementById("auth-btn");
 const connectBtn = document.getElementById("connect-btn");
 const projectInput = document.getElementById("project-input");
-const authStatus = document.getElementById("auth-status");
-const listProjectsBtn = document.getElementById("list-projects-btn");
-const projectsMenu = document.getElementById("projects-menu");
+const playgroundStatus = document.getElementById("playground-status");
+const playgroundStatusText = document.getElementById("playground-status-text");
+const playgroundModeBadge = document.getElementById("playground-mode-badge");
+const playgroundSteps = Array.from(
+  document.querySelectorAll("#playground-steps .playground-step"),
+);
+const playgroundCloudHint = document.getElementById("playground-cloud-hint");
 const openProjectBtn = document.getElementById("open-project-btn");
-const projectNameBadge = document.getElementById("project-name-badge");
+const toastStack = document.getElementById("toast-stack");
 
-let connectedProjectId = "";
-let connectedProjectName = "";
+syncCloudToolbarEnabled();
 
+function setActiveSteps(keys) {
+  const active = new Set(keys);
+  for (const item of playgroundSteps) {
+    const key = item.dataset.step;
+    item.classList.toggle("is-active", active.has(key));
+  }
+}
+
+function setModeBadge(label, modeClass) {
+  if (!playgroundModeBadge) return;
+  playgroundModeBadge.textContent = label;
+  playgroundModeBadge.className = `status-mode-badge ${modeClass}`;
+}
+
+function showToast(message, variant = "default") {
+  if (!toastStack || !message) return;
+  const toast = document.createElement("div");
+  toast.className = `toast toast--${variant}`;
+  toast.textContent = message;
+  toastStack.appendChild(toast);
+  window.setTimeout(() => {
+    toast.classList.add("toast--fade");
+  }, 2600);
+  window.setTimeout(() => {
+    toast.remove();
+  }, 2900);
+}
+
+function updatePlaygroundStatus() {
+  if (!playgroundStatus || !playgroundStatusText) return;
+  if (ctx.connectedProjectId && ctx.connectedProjectName) {
+    playgroundStatusText.textContent = `Cloud Mode · ${ctx.connectedProjectName}`;
+    setModeBadge("Connected", "mode-cloud");
+    playgroundStatus.removeAttribute("aria-describedby");
+    if (playgroundCloudHint) playgroundCloudHint.hidden = true;
+    setActiveSteps(["login", "connect", "run", "open"]);
+    return;
+  }
+  if (ctx.loginStatus?.loggedIn) {
+    playgroundStatusText.textContent =
+      "Signed in · not connected to a cloud project";
+    setModeBadge("Signed in", "mode-signed-in");
+    playgroundStatus.setAttribute(
+      "aria-describedby",
+      "playground-cloud-hint",
+    );
+    if (playgroundCloudHint) playgroundCloudHint.hidden = false;
+    setActiveSteps(["login"]);
+    return;
+  }
+  playgroundStatusText.textContent =
+    "Offline mode · run without logging in; log in for cloud";
+  setModeBadge("Offline", "mode-offline");
+  playgroundStatus.removeAttribute("aria-describedby");
+  if (playgroundCloudHint) playgroundCloudHint.hidden = true;
+  setActiveSteps([]);
+}
 
 function getRedirectUrl() {
   const url = new URL(window.location.href);
@@ -217,36 +150,49 @@ function getRedirectUrl() {
 
 async function initAuth() {
   try {
-    loginStatus = await getLoginStatus({
+    ctx.loginStatus = await getLoginStatus({
       clientId: audiotoolClientId,
       redirectUrl: getRedirectUrl(),
       scope: audiotoolScope,
     });
 
-    if (loginStatus.loggedIn) {
+    if (ctx.loginStatus.loggedIn) {
       authBtn.textContent = "Logout";
-      authStatus.textContent = "Status: Logged In (No Project)";
-      audiotoolClient = await createAudiotoolClient({ authorization: loginStatus });
+      ctx.audiotoolClient = await createAudiotoolClient({
+        authorization: ctx.loginStatus,
+      });
+      try {
+        if (!sessionStorage.getItem("pg-signed-in-toast-shown")) {
+          showToast("Signed in successfully.", "success");
+          sessionStorage.setItem("pg-signed-in-toast-shown", "1");
+        }
+      } catch {
+        /* ignore */
+      }
     } else {
       authBtn.textContent = "Login";
-      authStatus.textContent = "Status: Offline Mode";
+      ctx.audiotoolClient = null;
     }
 
     openProjectBtn.disabled = true;
-    connectedProjectId = "";
-    connectedProjectName = "";
-    if (projectNameBadge) projectNameBadge.textContent = "No project";
+    ctx.connectedProjectId = "";
+    ctx.connectedProjectName = "";
+    updatePlaygroundStatus();
   } catch (error) {
     logToConsole(`Auth Error: ${error.message}`, true);
+    showToast(`Auth error: ${error.message}`, "error");
+    ctx.audiotoolClient = null;
+  } finally {
+    syncCloudToolbarEnabled();
+    try {
+      const last = sessionStorage.getItem(LAST_CONNECTED_PROJECT_KEY);
+      if (last?.trim() && projectInput && !projectInput.value.trim()) {
+        projectInput.value = last.trim();
+      }
+    } catch {
+      /* ignore */
+    }
   }
-}
-
-function extractProjectId(projectName) {
-  // Expected: "projects/<uuid>"
-  const parts = String(projectName || "").split("/");
-  const idx = parts.indexOf("projects");
-  if (idx !== -1 && parts[idx + 1]) return parts[idx + 1];
-  return parts[parts.length - 1] || "";
 }
 
 async function bootEngine() {
@@ -257,7 +203,7 @@ async function bootEngine() {
 
   if (window.__NEXUS_INSTANCE__) {
     logToConsole("Engine already running (Reused from cache).");
-    nexus = window.__NEXUS_INSTANCE__;
+    ctx.nexus = window.__NEXUS_INSTANCE__;
     return;
   }
 
@@ -265,10 +211,11 @@ async function bootEngine() {
 
   try {
     logToConsole("Booting Local Offline Engine...");
-    nexus = await createOfflineDocument();
-    window.__NEXUS_INSTANCE__ = nexus;
+    ctx.nexus = await createOfflineDocument();
+    window.__NEXUS_INSTANCE__ = ctx.nexus;
     window.__NEXUS_MODE__ = "offline";
     logToConsole("Offline Engine Ready!");
+    updatePlaygroundStatus();
   } catch (err) {
     logToConsole(`Boot Error: ${err.message}`, true);
     console.error(err);
@@ -278,48 +225,56 @@ async function bootEngine() {
 }
 
 authBtn.addEventListener("click", async () => {
-  if (!loginStatus) return;
-  if (loginStatus.loggedIn) {
-    await loginStatus.logout();
+  if (!ctx.loginStatus) return;
+  if (ctx.loginStatus.loggedIn) {
+    await ctx.loginStatus.logout();
     window.location.reload();
   } else {
     logToConsole("Redirecting to Audiotool login...");
-    await loginStatus.login();
+    await ctx.loginStatus.login();
   }
 });
 
 async function connectToProject(projectId, displayNameHint) {
-  if (!audiotoolClient) {
-    logToConsole("You must Login first!", true);
+  if (!ctx.audiotoolClient) {
+    logToConsole("You must log in first (use Login in the Project bar).", true);
     return;
   }
 
   if (!projectId) {
-    logToConsole("Please paste a Project ID (UUID) first.", true);
+    logToConsole(
+      "Paste a Studio URL or project ID, then try Connect Project again.",
+      true,
+    );
     return;
   }
 
   try {
     logToConsole(`Connecting to cloud project: ${projectId}...`);
 
-    if (nexus && window.__NEXUS_MODE__ === "synced" && typeof nexus.stop === "function") {
-      await nexus.stop();
+    if (
+      ctx.nexus &&
+      window.__NEXUS_MODE__ === "synced" &&
+      typeof ctx.nexus.stop === "function"
+    ) {
+      await ctx.nexus.stop();
     }
 
     window.__NEXUS_INSTANCE__ = null;
     window.__NEXUS_MODE__ = null;
-    nexus = null;
+    ctx.nexus = null;
 
-    nexus = await audiotoolClient.createSyncedDocument({ project: projectId });
-    await nexus.start();
-    window.__NEXUS_INSTANCE__ = nexus;
+    ctx.nexus = await ctx.audiotoolClient.createSyncedDocument({
+      project: projectId,
+    });
+    await ctx.nexus.start();
+    window.__NEXUS_INSTANCE__ = ctx.nexus;
     window.__NEXUS_MODE__ = "synced";
 
-    // Resolve a human-friendly project name
     let projectName = (displayNameHint || "").trim();
     if (!projectName) {
       try {
-        const resp = await audiotoolClient.api.projectService.getProject({
+        const resp = await ctx.audiotoolClient.api.projectService.getProject({
           name: `projects/${projectId}`,
         });
         projectName = resp?.project?.displayName?.trim() || "";
@@ -329,144 +284,82 @@ async function connectToProject(projectId, displayNameHint) {
     }
     if (!projectName) projectName = projectId;
 
-    authStatus.textContent = `Status: Synced to ${projectName}`;
     logToConsole("Cloud Sync Ready! Your code now updates the real project.");
-    connectedProjectId = projectId;
+    showToast(`Connected to ${projectName}.`, "success");
+    ctx.connectedProjectId = projectId;
     openProjectBtn.disabled = false;
-    connectedProjectName = projectName;
-    if (projectNameBadge) projectNameBadge.textContent = projectName;
+    ctx.connectedProjectName = projectName;
+    updatePlaygroundStatus();
+    try {
+      sessionStorage.setItem(LAST_CONNECTED_PROJECT_KEY, projectId);
+    } catch {
+      /* ignore */
+    }
   } catch (err) {
     logToConsole(`Connect Error: ${err.message}`, true);
+    showToast(`Connect error: ${err.message}`, "error");
     console.error(err);
   }
 }
 
 connectBtn.addEventListener("click", async () => {
-  await connectToProject(projectInput.value.trim());
+  await connectToProject(parseProjectIdFromInput(projectInput.value));
+});
+
+initProjectsMenu(connectToProject);
+initCreateProjectFlow(connectToProject);
+initRunUserCode();
+initOnboardingTour();
+
+document.addEventListener("click", (event) => {
+  const action = event.target.closest("[data-empty-action]")?.dataset.emptyAction;
+  if (!action) return;
+
+  if (action === "samples") {
+    document.getElementById("browse-samples-btn")?.click();
+  }
+
+  if (action === "run") {
+    document.getElementById("run-btn")?.click();
+  }
+});
+
+// Fallback delegation: ensures "Take tour" works even if the direct
+// listener is missed during dynamic UI reflows/theme toggles.
+document.addEventListener("click", (event) => {
+  const takeTour = event.target.closest("#take-tour-btn");
+  if (!takeTour) return;
+  if (event.__pgTourHandled) return;
+  event.preventDefault();
+  startOnboardingTour(true);
+});
+
+window.addEventListener("pg:onboarding-ended", () => {
+  try {
+    ctx.editor?.layout();
+  } catch {
+    // ignore
+  }
 });
 
 openProjectBtn.addEventListener("click", () => {
-  if (!connectedProjectId) {
+  if (!ctx.connectedProjectId) {
     logToConsole("No project connected yet.", true);
+    showToast("Connect a project before opening Studio.", "error");
     return;
   }
-  const url = `https://beta.audiotool.com/studio?project=${encodeURIComponent(connectedProjectId)}`;
+  const url = `https://beta.audiotool.com/studio?project=${encodeURIComponent(ctx.connectedProjectId)}`;
   window.open(url, "_blank", "noopener,noreferrer");
+  showToast("Opened project in a new tab.", "success");
 });
 
-function setProjectsMenuOpen(isOpen) {
-  projectsMenu.hidden = !isOpen;
-  listProjectsBtn.setAttribute("aria-expanded", String(isOpen));
-  if (isOpen) {
-    projectsMenu.innerHTML = `<div class="project-subtitle">Loading projects…</div>`;
-  }
-}
-
-document.addEventListener("click", (e) => {
-  if (projectsMenu.hidden) return;
-  const dropdown = document.getElementById("projects-dropdown");
-  if (dropdown && !dropdown.contains(e.target)) {
-    projectsMenu.hidden = true;
-    listProjectsBtn.setAttribute("aria-expanded", "false");
-  }
-});
-
-document.addEventListener("keydown", (e) => {
-  if (e.key !== "Escape") return;
-  if (projectsMenu.hidden) return;
-  projectsMenu.hidden = true;
-  listProjectsBtn.setAttribute("aria-expanded", "false");
-  listProjectsBtn.focus();
-});
-
-listProjectsBtn.addEventListener("click", async () => {
-  if (!audiotoolClient) {
-    logToConsole("Login first, then click List Projects.", true);
-    return;
-  }
-
-  const willOpen = projectsMenu.hidden;
-  setProjectsMenuOpen(willOpen);
-  if (!willOpen) return;
-
-  try {
-    const resp = await audiotoolClient.api.projectService.listProjects({
-      pageSize: 50,
-      filter: "",
-      pageToken: "",
-      orderBy: "project.update_time desc",
-    });
-
-    const projects = resp?.projects ?? [];
-    if (!projects.length) {
-      projectsMenu.innerHTML = `<div class="project-subtitle">No projects found.</div>`;
-      return;
-    }
-
-    projectsMenu.innerHTML = projects
-      .map((p) => {
-        const projectId = extractProjectId(p.name);
-        const title = (p.displayName || "").trim() || projectId || "(Untitled project)";
-        const subtitle = projectId ? `UUID: ${projectId}` : p.name;
-        const creator = p.creatorName ? `by ${p.creatorName.split("/").pop()}` : "";
-        return `
-          <div class="project-row" role="menuitem" tabindex="0" data-project-id="${projectId}" data-project-name="${title.replaceAll('"', "&quot;")}">
-            <div>
-              <div class="project-title">${title}</div>
-              <div class="project-subtitle">${subtitle}</div>
-            </div>
-            <div class="project-meta">${creator}</div>
-          </div>
-        `;
-      })
-      .join("");
-
-    projectsMenu.querySelectorAll(".project-row").forEach((row) => {
-      row.addEventListener("click", async () => {
-        const projectId = row.getAttribute("data-project-id") || "";
-        const projectName = row.getAttribute("data-project-name") || "";
-        if (!projectId) {
-          logToConsole("Could not extract project UUID from selection.", true);
-          return;
-        }
-        projectInput.value = projectId;
-        projectsMenu.hidden = true;
-        listProjectsBtn.setAttribute("aria-expanded", "false");
-        await connectToProject(projectId, projectName);
-      });
-      row.addEventListener("keydown", async (e) => {
-        if (e.key !== "Enter" && e.key !== " ") return;
-        e.preventDefault();
-        row.click();
-      });
-    });
-  } catch (err) {
-    projectsMenu.innerHTML = `<div class="project-subtitle">Failed to load projects.</div>`;
-    logToConsole(`List Projects Error: ${err.message}`, true);
-    console.error(err);
-  }
-});
-
-document.getElementById("run-btn").addEventListener("click", async () => {
-  if (!nexus) {
-    logToConsole("Hold on! Engine is booting...", true);
-    return;
-  }
-
-  document.getElementById("nexus-ui-container").innerHTML = "";
-
-  const userCode = editor.getValue();
-  logToConsole("<br/>--- Running Code ---");
-
-  try {
-    const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
-    const executeUserCode = new AsyncFunction("nexus", "Nexus", userCode);
-    await executeUserCode(nexus, Nexus);
-  } catch (err) {
-    const message = err?.message ?? String(err);
-    const stack = err?.stack ? `\n${err.stack}` : "";
-    logToConsole(`Execution Error: ${message}${stack}`, true);
-    console.error(err);
+window.addEventListener("pg:run-feedback", (event) => {
+  const detail = event?.detail || {};
+  if (!detail.message) return;
+  const variant = detail.variant || "default";
+  showToast(detail.message, variant);
+  if (variant === "success" && ctx.connectedProjectId) {
+    setActiveSteps(["login", "connect", "run", "open"]);
   }
 });
 

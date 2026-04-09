@@ -4,20 +4,64 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Audiotool SDK Playground</title>
+  <script>
+    (function () {
+      try {
+        var raw = localStorage.getItem("playground-appearance");
+        var o = raw ? JSON.parse(raw) : {};
+        var el = document.documentElement;
+        var preferredDark =
+          window.matchMedia &&
+          window.matchMedia("(prefers-color-scheme: dark)").matches;
+        var theme = o.theme === "dark" || o.theme === "light" || o.theme === "system"
+          ? o.theme
+          : "light";
+        var useDark = theme === "dark" || (theme === "system" && preferredDark);
+        if (useDark) el.classList.add("pg-theme-dark");
+        var fs = parseInt(o.editorFontSize, 10);
+        if (!Number.isFinite(fs)) fs = 14;
+        el.dataset.pgEditorFont = String(Math.min(18, Math.max(12, fs)));
+        if (o.density === "compact") el.classList.add("pg-density-compact");
+        if (o.motion === "reduced") el.classList.add("pg-reduced-motion");
+        if (o.uiFontSize === "small") el.classList.add("pg-ui-font-small");
+        if (o.uiFontSize === "large") el.classList.add("pg-ui-font-large");
+      } catch (e) {}
+    })();
+  </script>
   <style>
     /* 1. Modern Color Palette & Typography */
     :root {
-      /* Cream / warm light theme */
-      --bg-base: #fbf6ea;    /* cream */
-      --bg-panel: #fffaf0;   /* warm paper */
-      --bg-header: #f3ead6;  /* slightly darker cream */
-      --accent-blue: #2563eb;
-      --accent-blue-hover: #1d4ed8;
-      --accent-green: #059669;
-      --accent-green-hover: #047857;
-      --text-main: #1f2937;  /* slate-800 */
-      --text-muted: #6b7280; /* slate-500 */
+      /* Cream / warm light theme — one accent family (teal) so title + buttons don’t clash */
+      --bg-base: #fbf6ea;
+      --bg-panel: #fffaf0;
+      --bg-header: #f3ead6;
+      --accent: #0f766e;
+      --accent-hover: #115e59;
+      --accent-soft: rgba(15, 118, 110, 0.14);
+      --accent-blue: #0f766e;
+      --accent-blue-hover: #115e59;
+      --accent-green: #0f766e;
+      --accent-green-hover: #115e59;
+      --text-main: #1f2937;
+      --text-muted: #6b7280;
       --border-color: rgba(31, 41, 55, 0.14);
+    }
+
+    html.pg-theme-dark {
+      color-scheme: dark;
+      --bg-base: #0c1118;
+      --bg-panel: #141c28;
+      --bg-header: #101820;
+      --accent: #2dd4bf;
+      --accent-hover: #5eead4;
+      --accent-soft: rgba(45, 212, 191, 0.16);
+      --accent-blue: #2dd4bf;
+      --accent-blue-hover: #5eead4;
+      --accent-green: #2dd4bf;
+      --accent-green-hover: #5eead4;
+      --text-main: #e5e7eb;
+      --text-muted: #9ca3af;
+      --border-color: rgba(229, 231, 235, 0.12);
     }
 
     body {
@@ -39,7 +83,7 @@
 
     /* 2. Top Navigation Bar */
     #title-bar {
-      padding: 14px 20px;
+      padding: 18px 22px;
       background: var(--bg-header);
       border-bottom: 1px solid var(--border-color);
       display: flex;
@@ -58,17 +102,207 @@
       margin: 0;
       line-height: 1;
     }
-    #title-bar .title .title-js { color: var(--accent-blue); }
-    #title-bar .title .title-rest { color: var(--text-main); }
+    #title-bar .title .title-js { color: var(--accent); }
+    #title-bar .title .title-rest { color: #3f3f3a; }
+    html.pg-theme-dark #title-bar .title .title-rest { color: #cbd5e1; }
+
+    #title-bar .title-bar-actions {
+      position: absolute;
+      right: 18px;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 12;
+    }
+    .appearance-menu-trigger {
+      width: 40px;
+      height: 40px;
+      padding: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      cursor: pointer;
+      box-shadow: 0 1px 2px rgba(31, 41, 55, 0.06);
+    }
+    html.pg-theme-dark .appearance-menu-trigger {
+      background: rgba(255, 255, 255, 0.08);
+      box-shadow: none;
+    }
+    .appearance-menu-trigger:hover {
+      background: rgba(255, 255, 255, 0.92);
+      border-color: rgba(15, 118, 110, 0.35);
+    }
+    html.pg-theme-dark .appearance-menu-trigger:hover {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: rgba(45, 212, 191, 0.35);
+    }
+    .appearance-menu-trigger[aria-expanded="true"] {
+      border-color: rgba(15, 118, 110, 0.5);
+      box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.15);
+    }
+    html.pg-theme-dark .appearance-menu-trigger[aria-expanded="true"] {
+      border-color: rgba(45, 212, 191, 0.45);
+      box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.12);
+    }
+    .appearance-menu-panel {
+      position: absolute;
+      top: calc(100% + 8px);
+      right: 0;
+      width: min(288px, calc(100vw - 36px));
+      padding: 14px 14px 12px;
+      background: rgba(255, 250, 240, 0.98);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      box-shadow:
+        0 18px 48px rgba(31, 41, 55, 0.2),
+        0 2px 0 rgba(255, 255, 255, 0.65) inset;
+    }
+    html.pg-theme-dark .appearance-menu-panel {
+      background: rgba(30, 41, 55, 0.98);
+      box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
+    }
+    .appearance-menu-panel[hidden] {
+      display: none !important;
+    }
+    .appearance-menu-field {
+      margin-bottom: 14px;
+    }
+    .appearance-menu-field:last-child {
+      margin-bottom: 0;
+    }
+    .appearance-menu-label {
+      display: block;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin: 0 0 6px 0;
+    }
+    .appearance-segment {
+      display: flex;
+      gap: 6px;
+    }
+    .appearance-segment button {
+      flex: 1;
+      margin: 0;
+      padding: 8px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      background: rgba(255, 255, 255, 0.75);
+      color: var(--text-main);
+      cursor: pointer;
+    }
+    html.pg-theme-dark .appearance-segment button {
+      background: rgba(255, 255, 255, 0.06);
+    }
+    .appearance-segment button[aria-pressed="true"] {
+      background: linear-gradient(180deg, #14b8a6, #0f766e);
+      color: #fff;
+      border-color: rgba(15, 118, 110, 0.45);
+    }
+    html.pg-theme-dark .appearance-segment button[aria-pressed="true"] {
+      background: linear-gradient(180deg, #14b8a6, #0d9488);
+      border-color: rgba(45, 212, 191, 0.35);
+    }
+    .appearance-segment button[aria-pressed="false"]:hover {
+      background: rgba(255, 255, 255, 0.95);
+      border-color: rgba(31, 41, 55, 0.22);
+    }
+    html.pg-theme-dark .appearance-segment button[aria-pressed="false"]:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+    .appearance-font-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 2px;
+    }
+    .appearance-font-row input[type="range"] {
+      flex: 1;
+      min-width: 0;
+      accent-color: var(--accent);
+    }
+    .appearance-font-value {
+      min-width: 2.75rem;
+      font-size: 12px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      color: var(--text-muted);
+      text-align: right;
+    }
+
+    /* Comfortable = default layout; compact tightens chrome */
+    html.pg-density-compact #title-bar {
+      padding: 12px 18px;
+    }
+    html.pg-density-compact #title-bar .title {
+      font-size: 24px;
+    }
+    html.pg-density-compact #top-bar {
+      padding: 11px 16px;
+      gap: 12px;
+    }
+    html.pg-density-compact .toolbar-group {
+      padding: 7px 10px;
+      gap: 6px;
+    }
+    html.pg-density-compact .toolbar-row {
+      gap: 8px;
+    }
+    html.pg-density-compact .playground-status-bar {
+      margin-top: 2px;
+      padding-top: 7px;
+    }
+    html.pg-density-compact #playground-status {
+      font-size: 12px;
+    }
+    html.pg-density-compact #main-content {
+      padding-top: 10px;
+    }
+    html.pg-density-compact .toolbar.pane-header {
+      padding: 10px 14px;
+      gap: 12px;
+    }
+    html.pg-density-compact .toolbar.pane-header #run-btn {
+      padding: 9px 20px;
+      font-size: 14px;
+    }
+    html.pg-density-compact .editor-toolbar-title {
+      font-size: 11px;
+      padding-left: 8px;
+    }
+    html.pg-density-compact .pane-header {
+      padding: 7px 14px;
+    }
+    html.pg-density-compact #right-pane .pane-header:first-child {
+      padding-top: 9px;
+    }
+    html.pg-density-compact .empty-state {
+      inset: 12px;
+    }
+    html.pg-density-compact .empty-card {
+      padding: 14px;
+    }
+    html.pg-density-compact body #console-output {
+      height: 180px;
+      padding: 10px 12px;
+      font-size: 13px;
+    }
 
     #top-bar {
-      padding: 12px 20px;
+      padding: 16px 22px;
       background: var(--bg-header);
       display: flex;
       gap: 16px;
       align-items: stretch;
       border-bottom: 1px solid var(--border-color);
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+      box-shadow: 0 2px 8px rgba(62, 56, 45, 0.08);
       z-index: 10;
     }
 
@@ -83,41 +317,197 @@
     .toolbar-group {
       display: flex;
       flex-direction: column;
-      gap: 6px;
-      padding: 8px 10px;
-      border: 1px solid var(--border-color);
+      gap: 8px;
+      padding: 10px 12px;
+      border: 1px solid rgba(31, 41, 55, 0.14);
       border-radius: 10px;
-      background: rgba(255, 255, 255, 0.45);
+      background: rgba(255, 255, 255, 0.72);
       min-width: 220px;
     }
 
     /* Allow shrinking so PROJECT controls wrap instead of clipping when the window is narrow */
     .toolbar-group-wide { flex: 1 1 auto; min-width: 0; }
 
+    /* Dark: Project row must use the same family as the rest of the shell (not a cream card). */
+    html.pg-theme-dark #top-bar {
+      box-shadow: 0 2px 14px rgba(0, 0, 0, 0.45);
+    }
+    html.pg-theme-dark .toolbar-group {
+      background: rgba(255, 255, 255, 0.045);
+      border-color: var(--border-color);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+    html.pg-theme-dark .playground-status-bar {
+      border-top-color: rgba(255, 255, 255, 0.1);
+    }
+    html.pg-theme-dark #top-bar input[type="text"] {
+      background: rgba(15, 23, 42, 0.55);
+      border-color: rgba(255, 255, 255, 0.12);
+    }
+    html.pg-theme-dark #top-bar #auth-btn,
+    html.pg-theme-dark #top-bar #list-projects-btn,
+    html.pg-theme-dark #top-bar #create-project-btn,
+    html.pg-theme-dark #top-bar #open-project-btn {
+      background: rgba(255, 255, 255, 0.07);
+      border-color: rgba(255, 255, 255, 0.12);
+      color: var(--text-main);
+    }
+    html.pg-theme-dark #top-bar #auth-btn:hover,
+    html.pg-theme-dark #top-bar #list-projects-btn:hover,
+    html.pg-theme-dark #top-bar #create-project-btn:hover,
+    html.pg-theme-dark #top-bar #open-project-btn:hover {
+      background: rgba(255, 255, 255, 0.13);
+      border-color: rgba(255, 255, 255, 0.22);
+    }
+
     .toolbar-label {
-      font-size: 11px;
+      font-size: 12px;
+      font-weight: 800;
       text-transform: uppercase;
-      letter-spacing: 1px;
-      color: var(--text-muted);
+      letter-spacing: 0.08em;
+      color: var(--text-main);
       line-height: 1;
       user-select: none;
     }
 
     .toolbar-row {
       display: flex;
-      gap: 10px;
+      gap: 12px;
       align-items: center;
       flex-wrap: wrap;
     }
 
-    .mode-badge {
+    .toolbar-cluster {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      padding: 6px 8px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.46);
+      border: 1px solid rgba(31, 41, 55, 0.12);
+    }
+    html.pg-theme-dark .toolbar-cluster {
+      background: rgba(255, 255, 255, 0.04);
+      border-color: rgba(255, 255, 255, 0.1);
+    }
+    .toolbar-cluster-label {
+      font-size: 10px;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      font-weight: 800;
+      color: var(--text-muted);
+      margin-right: 2px;
+    }
+
+    .playground-status-bar {
+      margin-top: 4px;
+      padding-top: 10px;
+      border-top: 1px solid rgba(31, 41, 55, 0.1);
+    }
+    #playground-status {
+      display: inline-block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-main);
+      opacity: 0.82;
+      letter-spacing: 0.01em;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+    .status-mode-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 92px;
+      padding: 3px 10px;
+      border-radius: 999px;
+      margin-right: 8px;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      border: 1px solid transparent;
+      vertical-align: baseline;
+    }
+    .status-mode-badge.mode-offline {
+      color: #0f766e;
+      background: rgba(15, 118, 110, 0.12);
+      border-color: rgba(15, 118, 110, 0.28);
+    }
+    .status-mode-badge.mode-signed-in {
+      color: #7c3aed;
+      background: rgba(124, 58, 237, 0.12);
+      border-color: rgba(124, 58, 237, 0.24);
+    }
+    .status-mode-badge.mode-cloud {
+      color: #1f2937;
+      background: rgba(251, 191, 36, 0.22);
+      border-color: rgba(217, 119, 6, 0.36);
+    }
+    html.pg-theme-dark .status-mode-badge.mode-offline {
+      color: #7ef3e6;
+      background: rgba(45, 212, 191, 0.18);
+      border-color: rgba(45, 212, 191, 0.34);
+    }
+    html.pg-theme-dark .status-mode-badge.mode-signed-in {
+      color: #c4b5fd;
+      background: rgba(139, 92, 246, 0.22);
+      border-color: rgba(167, 139, 250, 0.3);
+    }
+    html.pg-theme-dark .status-mode-badge.mode-cloud {
+      color: #fde68a;
+      background: rgba(251, 191, 36, 0.18);
+      border-color: rgba(251, 191, 36, 0.34);
+    }
+    .playground-steps {
+      margin: 7px 0 0 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
       font-size: 12px;
+      color: var(--text-muted);
+      list-style: none;
+      padding: 0;
+    }
+    .playground-step {
       padding: 4px 8px;
       border-radius: 999px;
-      border: 1px solid var(--border-color);
-      background: rgba(255, 255, 255, 0.7);
-      color: var(--text-main);
-      white-space: nowrap;
+      border: 1px solid rgba(31, 41, 55, 0.14);
+      background: rgba(255, 255, 255, 0.5);
+    }
+    .playground-step.is-active {
+      background: rgba(15, 118, 110, 0.14);
+      border-color: rgba(15, 118, 110, 0.34);
+      color: #0e5a55;
+      font-weight: 700;
+    }
+    html.pg-theme-dark .playground-step {
+      background: rgba(255, 255, 255, 0.04);
+      border-color: rgba(255, 255, 255, 0.12);
+    }
+    html.pg-theme-dark .playground-step.is-active {
+      background: rgba(45, 212, 191, 0.16);
+      border-color: rgba(45, 212, 191, 0.35);
+      color: #ccfbf1;
+    }
+    html.pg-theme-dark #playground-status {
+      opacity: 1;
+      color: #e2e8f0;
+    }
+    #playground-cloud-hint {
+      margin: 6px 0 0 0;
+      padding: 0;
+      font-size: 12px;
+      line-height: 1.45;
+      font-weight: 500;
+      color: var(--text-muted);
+      max-width: 48rem;
+    }
+    #playground-cloud-hint[hidden] {
+      display: none !important;
+    }
+    html.pg-theme-dark #playground-cloud-hint {
+      color: #94a3b8;
     }
 
     input[type="text"], select {
@@ -132,6 +522,14 @@
     }
     input[type="text"]:focus, select:focus { border-color: var(--accent-blue); }
     input[type="text"] { width: 260px; }
+    #top-bar input[type="text"]::placeholder {
+      color: var(--text-muted);
+      opacity: 1;
+    }
+    #top-bar input[type="text"] {
+      color: var(--text-main);
+      font-weight: 500;
+    }
 
     /* Modern Buttons */
     button {
@@ -155,6 +553,7 @@
     /* Button hierarchy */
     #auth-btn,
     #list-projects-btn,
+    #create-project-btn,
     #open-project-btn {
       background: rgba(255, 255, 255, 0.85);
       color: var(--text-main);
@@ -163,20 +562,54 @@
     /* Extra specificity so button base color never "wins" */
     #top-bar #auth-btn,
     #top-bar #list-projects-btn,
+    #top-bar #create-project-btn,
     #top-bar #open-project-btn {
       color: var(--text-main);
     }
     #auth-btn:hover,
     #list-projects-btn:hover,
+    #create-project-btn:hover,
     #open-project-btn:hover {
       background: rgba(255, 255, 255, 0.95);
       border-color: rgba(31, 41, 55, 0.22);
+    }
+    #top-bar #auth-btn,
+    #top-bar #list-projects-btn,
+    #top-bar #create-project-btn,
+    #top-bar #open-project-btn {
+      color: var(--text-main);
+      font-weight: 700;
     }
     #connect-btn {
       background: var(--accent-blue);
       color: white;
     }
     #connect-btn:hover { background: var(--accent-blue-hover); }
+
+    /* Cloud actions disabled until signed in */
+    #top-bar #list-projects-btn:disabled,
+    #top-bar #create-project-btn:disabled,
+    #top-bar #connect-btn:disabled {
+      opacity: 0.4;
+      filter: grayscale(0.35);
+      box-shadow: none;
+    }
+    html.pg-theme-dark #top-bar #list-projects-btn:disabled,
+    html.pg-theme-dark #top-bar #create-project-btn:disabled,
+    html.pg-theme-dark #top-bar #connect-btn:disabled {
+      opacity: 0.36;
+      filter: grayscale(0.28);
+    }
+    #top-bar #list-projects-btn:disabled:hover,
+    #top-bar #create-project-btn:disabled:hover {
+      transform: none;
+      background: rgba(255, 255, 255, 0.85);
+    }
+    #top-bar #connect-btn:disabled:hover {
+      transform: none;
+      background: var(--accent-blue);
+      opacity: 0.4;
+    }
 
     /* Focus visibility (keyboard accessibility) */
     :focus { outline: none; }
@@ -197,35 +630,61 @@
       * { transition: none !important; scroll-behavior: auto !important; }
       button:hover { transform: none; }
     }
+    html.pg-reduced-motion * {
+      transition: none !important;
+      animation: none !important;
+      scroll-behavior: auto !important;
+    }
+    html.pg-ui-font-small button,
+    html.pg-ui-font-small input[type="text"],
+    html.pg-ui-font-small select,
+    html.pg-ui-font-small .sample-meta,
+    html.pg-ui-font-small .modal-subtitle {
+      font-size: 12px;
+    }
+    html.pg-ui-font-small .toolbar-label,
+    html.pg-ui-font-small .pane-header {
+      font-size: 11px;
+    }
+    html.pg-ui-font-small #playground-status,
+    html.pg-ui-font-small #playground-cloud-hint {
+      font-size: 12px;
+    }
+    html.pg-ui-font-large button,
+    html.pg-ui-font-large input[type="text"],
+    html.pg-ui-font-large select,
+    html.pg-ui-font-large .sample-meta,
+    html.pg-ui-font-large .modal-subtitle {
+      font-size: 14px;
+    }
+    html.pg-ui-font-large .toolbar-label,
+    html.pg-ui-font-large .pane-header {
+      font-size: 13px;
+    }
+    html.pg-ui-font-large #playground-status,
+    html.pg-ui-font-large #playground-cloud-hint {
+      font-size: 14px;
+    }
 
     button.action-btn {
-      background: var(--accent-green);
-      color: white;
-      box-shadow: 0 0 10px rgba(16, 185, 129, 0.2);
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(15, 118, 110, 0.25);
     }
     button.action-btn:hover {
-      background: var(--accent-green-hover);
-      box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
-    }
-
-    #auth-status {
-      color: var(--text-muted);
-      font-size: 12px;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      background: rgba(255, 255, 255, 0.7);
-      padding: 4px 8px;
-      border-radius: 4px;
-      border: 1px solid var(--border-color);
-      white-space: nowrap;
+      background: var(--accent-hover);
+      box-shadow: 0 3px 12px rgba(15, 118, 110, 0.3);
     }
 
     /* 3. Main Workspace Layout */
     /* min-width: 0 on flex items fixes Safari (and some Chrome) first-paint overflow until resize */
     #main-content {
       display: flex;
-      flex-grow: 1;
+      flex: 1 1 0;
       min-width: 0;
-      height: calc(100vh - 55px - 52px);
+      min-height: 0;
+      padding-top: 14px;
+      box-sizing: border-box;
     }
 
     #left-pane {
@@ -276,7 +735,7 @@
 
     /* Editor toolbar: single row above Monaco (Browse left, Run right) */
     .toolbar {
-      padding: 10px 15px;
+      padding: 12px 18px;
       background: transparent;
       display: flex;
       justify-content: space-between;
@@ -292,8 +751,8 @@
       flex-direction: row;
       justify-content: space-between;
       align-items: center;
-      gap: 12px;
-      padding: 8px 15px;
+      gap: 16px;
+      padding: 14px 18px;
       background: var(--bg-header);
       border-top: none;
       border-radius: 0;
@@ -310,17 +769,17 @@
       flex-direction: row;
       flex-wrap: wrap;
       align-items: center;
-      gap: 10px;
+      gap: 14px;
       min-width: 0;
     }
 
     .editor-toolbar-title {
       margin: 0;
-      font-size: 11px;
-      color: var(--text-muted);
+      font-size: 12px;
+      color: var(--text-main);
       text-transform: uppercase;
-      letter-spacing: 1px;
-      font-weight: 700;
+      letter-spacing: 0.08em;
+      font-weight: 800;
       line-height: 1;
       padding-left: 12px;
       padding-right: 6px;
@@ -329,12 +788,37 @@
 
     .toolbar.pane-header #run-btn {
       flex-shrink: 0;
+      padding: 12px 28px;
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: 0.03em;
+      border-radius: 10px;
+      margin-left: 8px;
+      box-shadow:
+        0 4px 16px rgba(15, 118, 110, 0.32),
+        0 1px 0 rgba(255, 255, 255, 0.2) inset;
+    }
+    .toolbar.pane-header #run-btn:hover {
+      box-shadow:
+        0 6px 22px rgba(15, 118, 110, 0.38),
+        0 1px 0 rgba(255, 255, 255, 0.25) inset;
     }
 
     #editor-js {
       flex-grow: 1;
       min-height: 0;
       min-width: 0;
+      background: #fffdf9;
+    }
+    html.pg-theme-dark #editor-js {
+      background: #1e1e1e;
+    }
+    /* Slightly warmer editor surface; keeps VS theme readable on cream chrome */
+    #editor-js .monaco-editor .margin {
+      background-color: #faf7f2 !important;
+    }
+    html.pg-theme-dark #editor-js .monaco-editor .margin {
+      background-color: #1a1a1a !important;
     }
 
     /* Projects dropdown */
@@ -346,7 +830,9 @@
       width: 520px;
       max-width: calc(100vw - 40px);
       max-height: 360px;
-      overflow: auto;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
       background: rgba(255, 250, 240, 0.98);
       border: 1px solid var(--border-color);
       border-radius: 14px;
@@ -357,6 +843,42 @@
       z-index: 20;
     }
     #projects-menu[hidden] { display: none; }
+    .projects-menu-inner {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      flex: 1;
+      gap: 10px;
+    }
+    .projects-menu-search {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 8px 11px;
+      font-size: 13px;
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
+      background: rgba(255, 255, 255, 0.85);
+      color: var(--text-main);
+    }
+    .projects-menu-search:focus {
+      outline: none;
+      border-color: rgba(15, 118, 110, 0.55);
+      box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12);
+    }
+    .projects-menu-search::placeholder {
+      color: var(--text-muted);
+    }
+    .projects-menu-list {
+      overflow-y: auto;
+      min-height: 0;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .projects-menu-empty {
+      padding: 8px 4px;
+    }
     .project-row {
       display: flex;
       gap: 12px;
@@ -368,12 +890,12 @@
       background: rgba(255, 255, 255, 0.55);
     }
     .project-row:hover {
-      background: rgba(37, 99, 235, 0.08);
-      border-color: rgba(37, 99, 235, 0.18);
+      background: rgba(15, 118, 110, 0.08);
+      border-color: rgba(15, 118, 110, 0.22);
     }
     .project-row:focus-visible {
-      border-color: rgba(37, 99, 235, 0.35);
-      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
+      border-color: rgba(15, 118, 110, 0.45);
+      box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.15);
     }
     .project-title { font-size: 13px; font-weight: 700; color: var(--text-main); }
     .project-subtitle { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
@@ -381,26 +903,35 @@
 
     /* 4. NexusUI Canvas Area */
     .pane-header {
-      padding: 8px 15px;
+      padding: 10px 18px;
       background: var(--bg-header);
       border-bottom: 1px solid var(--border-color);
       border-top: 1px solid var(--border-color);
-      font-size: 11px;
-      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--text-main);
       text-transform: uppercase;
-      letter-spacing: 1px;
+      letter-spacing: 0.08em;
     }
-    #right-pane .pane-header:first-child { border-top: none; }
+    #right-pane .pane-header:first-child {
+      border-top: none;
+      padding-top: 12px;
+    }
 
     #nexus-ui-container {
       flex-grow: 1;
+      min-height: 300px;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      background: radial-gradient(circle at center, rgba(37,99,235,0.10) 0%, var(--bg-base) 70%);
+      background: radial-gradient(circle at center, rgba(15, 118, 110, 0.07) 0%, var(--bg-base) 70%);
       overflow-y: auto;
       position: relative;
+      color: var(--text-main);
+    }
+    html.pg-theme-dark #nexus-ui-container {
+      background: radial-gradient(circle at center, rgba(45, 212, 191, 0.08) 0%, var(--bg-base) 72%);
     }
 
     .empty-state {
@@ -410,20 +941,299 @@
       place-items: center;
       pointer-events: none;
     }
+
     .empty-card {
       pointer-events: none;
-      max-width: 520px;
+      position: relative;
+      max-width: min(680px, 100%);
       width: 100%;
-      border: 1px dashed rgba(31, 41, 55, 0.22);
-      border-radius: 14px;
-      background: rgba(255, 255, 255, 0.55);
-      padding: 18px 18px;
+      border: 1px solid rgba(167, 151, 113, 0.24);
+      border-radius: 24px;
+      background:
+        radial-gradient(circle at top, rgba(255, 255, 255, 0.7), transparent 58%),
+        linear-gradient(180deg, rgba(255, 252, 245, 0.96), rgba(249, 243, 232, 0.92));
+      box-shadow:
+        0 18px 40px rgba(44, 62, 80, 0.08),
+        inset 0 1px 0 rgba(255, 255, 255, 0.85);
+      padding: 24px 24px 22px;
       text-align: center;
+      overflow: hidden;
     }
-    .empty-title { font-weight: 800; font-size: 14px; color: var(--text-main); margin-bottom: 6px; }
-    .empty-text { font-size: 13px; color: var(--text-muted); margin-bottom: 12px; }
-    .empty-hints { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; color: var(--text-main); font-size: 12px; }
-    .empty-hints span { padding: 4px 8px; border-radius: 999px; border: 1px solid var(--border-color); background: rgba(255,255,255,0.75); }
+
+    .empty-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at 18% 20%, rgba(95, 201, 190, 0.14), transparent 28%),
+        radial-gradient(circle at 82% 78%, rgba(236, 201, 124, 0.12), transparent 24%);
+      pointer-events: none;
+    }
+
+    .empty-eyebrow {
+      position: relative;
+      z-index: 1;
+      margin-bottom: 8px;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #5aaea5;
+    }
+
+    .empty-title {
+      position: relative;
+      z-index: 1;
+      margin-bottom: 8px;
+      font-size: 28px;
+      line-height: 1.05;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      color: var(--text-main);
+    }
+
+    .empty-text {
+      position: relative;
+      z-index: 1;
+      max-width: 480px;
+      margin: 0 auto 16px;
+      font-size: 14px;
+      color: var(--text-muted);
+      line-height: 1.55;
+    }
+
+    .empty-actions {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 18px;
+      pointer-events: auto;
+    }
+
+    .empty-cta {
+      appearance: none;
+      border-radius: 999px;
+      padding: 10px 16px;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease, border-color 120ms ease;
+    }
+
+    .empty-cta:hover {
+      transform: translateY(-1px);
+    }
+
+    .empty-cta--primary {
+      border: 1px solid rgba(63, 175, 164, 0.92);
+      background: linear-gradient(180deg, #69d0c4, #4eb5aa);
+      color: #fffef9;
+      box-shadow: 0 10px 24px rgba(95, 201, 190, 0.22);
+    }
+
+    .empty-cta--ghost {
+      border: 1px solid rgba(167, 151, 113, 0.28);
+      background: rgba(255, 255, 255, 0.62);
+      color: var(--text-main);
+    }
+
+    .empty-workflows {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: 1.06fr 0.94fr;
+      gap: 14px;
+      margin: 0;
+      text-align: left;
+      align-items: stretch;
+    }
+
+    @media (max-width: 640px) {
+      .empty-card {
+        padding: 20px 16px 16px;
+        border-radius: 18px;
+      }
+
+      .empty-title {
+        font-size: 22px;
+      }
+
+      .empty-actions {
+        flex-direction: column;
+      }
+
+      .empty-workflows {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .empty-workflow {
+      position: relative;
+      padding: 16px;
+      border-radius: 18px;
+      border: 1px solid rgba(31, 41, 55, 0.12);
+      background: rgba(255, 255, 255, 0.58);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+    }
+
+    .empty-workflow--default {
+      border-color: rgba(95, 201, 190, 0.34);
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(243, 251, 249, 0.92));
+      box-shadow:
+        0 10px 24px rgba(95, 201, 190, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    }
+
+    .empty-workflow-badge {
+      display: inline-flex;
+      margin-bottom: 10px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: rgba(95, 201, 190, 0.14);
+      color: #317d75;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .empty-workflow-head {
+      font-weight: 800;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-main);
+      margin: 0 0 8px 0;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .empty-workflow-head--default {
+      font-size: 12px;
+    }
+
+    .empty-workflow-icon {
+      font-size: 15px;
+      line-height: 1;
+      opacity: 0.95;
+    }
+
+    .empty-workflow-tagline {
+      font-size: 12.5px;
+      color: var(--text-muted);
+      line-height: 1.5;
+      margin: 0 0 10px 0;
+      font-weight: 500;
+    }
+
+    .empty-workflow-steps {
+      margin: 0;
+      padding-left: 1.15rem;
+      font-size: 12.5px;
+      color: var(--text-muted);
+      line-height: 1.55;
+    }
+
+    .empty-workflow-steps li {
+      margin-bottom: 4px;
+    }
+
+    .empty-workflow-steps li:last-child {
+      margin-bottom: 0;
+    }
+
+    .empty-workflow-steps .wf-action {
+      color: var(--text-main);
+      font-weight: 700;
+    }
+
+    /* Keep empty state readable when canvas height is limited (laptops). */
+    @media (max-height: 900px) {
+      .empty-state {
+        inset: 10px;
+        place-items: stretch;
+        pointer-events: auto;
+      }
+
+      .empty-card {
+        pointer-events: auto;
+        max-height: 100%;
+        overflow-y: auto;
+        margin: 0 auto;
+        border-radius: 16px;
+        padding: 14px 14px 12px;
+      }
+
+      .empty-eyebrow {
+        margin-bottom: 6px;
+      }
+
+      .empty-text {
+        margin-bottom: 10px;
+        font-size: 13px;
+        line-height: 1.45;
+      }
+
+      .empty-actions {
+        margin-bottom: 10px;
+        gap: 8px;
+      }
+
+      .empty-cta {
+        padding: 8px 12px;
+        font-size: 12px;
+      }
+
+      .empty-workflows {
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+
+      .empty-workflow {
+        padding: 12px;
+        border-radius: 14px;
+      }
+
+      .empty-workflow-tagline,
+      .empty-workflow-steps {
+        font-size: 12px;
+      }
+    }
+
+    html.pg-theme-dark .empty-card {
+      background:
+        radial-gradient(circle at top, rgba(255, 255, 255, 0.05), transparent 58%),
+        linear-gradient(180deg, rgba(16, 23, 34, 0.94), rgba(12, 18, 28, 0.98));
+      border-color: rgba(95, 201, 190, 0.16);
+      box-shadow: 0 20px 44px rgba(0, 0, 0, 0.28);
+    }
+
+    html.pg-theme-dark .empty-workflow {
+      background: rgba(255, 255, 255, 0.04);
+      border-color: rgba(148, 163, 184, 0.14);
+      box-shadow: none;
+    }
+
+    html.pg-theme-dark .empty-workflow--default {
+      background: rgba(95, 201, 190, 0.08);
+      border-color: rgba(95, 201, 190, 0.22);
+    }
+
+    html.pg-theme-dark .empty-workflow-badge {
+      background: rgba(95, 201, 190, 0.14);
+      color: #8ae0d7;
+    }
+
+    html.pg-theme-dark .empty-cta--ghost {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(148, 163, 184, 0.18);
+      color: var(--text-main);
+    }
 
     /* Samples modal */
     .modal-overlay {
@@ -436,13 +1246,34 @@
       background: rgba(17, 24, 39, 0.35);
       z-index: 50;
     }
-    .modal {
+    /* Beat bundled style.css .modal-overlay / .modal (different palette + z-index) */
+    html body #samples-modal.modal-overlay {
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      background: rgba(17, 24, 39, 0.28);
+      z-index: 1250;
+    }
+    html.pg-theme-dark body #samples-modal.modal-overlay {
+      background: rgba(0, 0, 0, 0.5);
+    }
+    html body #samples-modal .modal {
       width: min(720px, 100%);
-      background: var(--bg-panel);
+      max-height: min(80vh, 900px);
+      overflow: auto;
+      background: rgba(255, 250, 240, 0.98);
       border: 1px solid var(--border-color);
       border-radius: 16px;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+      box-shadow:
+        0 18px 55px rgba(31, 41, 55, 0.22),
+        0 2px 0 rgba(255, 255, 255, 0.7) inset;
       padding: 16px 16px;
+      color: var(--text-main);
+    }
+    html.pg-theme-dark body #samples-modal .modal {
+      background: rgba(30, 41, 55, 0.98);
+      box-shadow:
+        0 18px 55px rgba(0, 0, 0, 0.4),
+        0 2px 0 rgba(255, 255, 255, 0.04) inset;
     }
     .modal-header {
       display: flex;
@@ -462,85 +1293,413 @@
       padding: 10px 12px;
       border-radius: 12px;
       border: 1px solid var(--border-color);
-      background: rgba(255,255,255,0.70);
+      background: rgba(255, 255, 255, 0.82);
       color: var(--text-main);
       cursor: pointer;
       display: flex;
       gap: 10px;
       align-items: center;
     }
-    .sample-btn:hover { background: rgba(255,255,255,0.90); }
+    .sample-btn:hover {
+      background: rgba(255, 255, 255, 0.95);
+      border-color: rgba(15, 118, 110, 0.28);
+    }
+    .sample-btn.is-selected {
+      background: rgba(15, 118, 110, 0.12);
+      border-color: rgba(15, 118, 110, 0.45);
+      box-shadow: 0 0 0 2px rgba(15, 118, 110, 0.14);
+    }
+    html.pg-theme-dark .sample-btn {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: var(--border-color);
+    }
+    html.pg-theme-dark .sample-btn:hover {
+      background: rgba(45, 212, 191, 0.1);
+      border-color: rgba(45, 212, 191, 0.28);
+    }
+    html.pg-theme-dark .sample-btn.is-selected {
+      background: rgba(45, 212, 191, 0.16);
+      border-color: rgba(45, 212, 191, 0.5);
+      box-shadow: 0 0 0 2px rgba(45, 212, 191, 0.14);
+    }
     .sample-pill {
       font-size: 11px;
       letter-spacing: 0.8px;
       text-transform: uppercase;
       padding: 4px 8px;
       border-radius: 999px;
-      background: rgba(37,99,235,0.12);
-      border: 1px solid rgba(37,99,235,0.24);
+      background: rgba(15, 118, 110, 0.1);
+      border: 1px solid rgba(15, 118, 110, 0.22);
       color: var(--text-main);
       white-space: nowrap;
     }
+    html.pg-theme-dark .sample-pill {
+      background: rgba(45, 212, 191, 0.12);
+      border-color: rgba(45, 212, 191, 0.28);
+    }
     .sample-meta { color: var(--text-muted); font-size: 12px; }
+    .samples-section-heading {
+      margin: 16px 0 6px 0;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-main);
+    }
+    .samples-section-heading:first-of-type { margin-top: 0; }
+    .samples-section-note {
+      margin: 0 0 10px 0;
+      font-size: 12px;
+      line-height: 1.45;
+      color: var(--text-muted);
+    }
+    .sample-pill--template {
+      background: rgba(120, 53, 15, 0.08);
+      border: 1px dashed rgba(120, 53, 15, 0.35);
+      color: #92400e;
+      font-weight: 800;
+    }
+    html.pg-theme-dark .sample-pill--template {
+      background: rgba(251, 191, 36, 0.12);
+      border-color: rgba(251, 191, 36, 0.38);
+      color: #fcd34d;
+    }
     .btn-secondary {
       background: rgba(255, 255, 255, 0.92);
-      color: #111827;
+      color: var(--text-main);
       border: 1px solid rgba(31, 41, 55, 0.22);
     }
     .btn-secondary:hover {
       background: rgba(255, 255, 255, 1);
       border-color: rgba(31, 41, 55, 0.30);
     }
+    html.pg-theme-dark .btn-secondary {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+    }
+    html.pg-theme-dark .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: rgba(45, 212, 191, 0.28);
+    }
+    #take-tour-btn {
+      background: linear-gradient(180deg, rgba(15, 118, 110, 0.18), rgba(15, 118, 110, 0.11));
+      color: #0e5a55;
+      border: 1px solid rgba(15, 118, 110, 0.4);
+      font-weight: 700;
+      border-radius: 999px;
+      padding-left: 12px;
+      padding-right: 12px;
+      box-shadow:
+        0 1px 0 rgba(255, 255, 255, 0.75) inset,
+        0 4px 10px rgba(15, 118, 110, 0.12);
+    }
+    #take-tour-btn:hover {
+      background: linear-gradient(180deg, rgba(15, 118, 110, 0.24), rgba(15, 118, 110, 0.15));
+      border-color: rgba(15, 118, 110, 0.5);
+      color: #0b4f4a;
+    }
+    #take-tour-btn::before {
+      content: "✦";
+      margin-right: 7px;
+      color: rgba(15, 118, 110, 0.95);
+      font-size: 0.95em;
+      line-height: 1;
+    }
+    html.pg-theme-dark #take-tour-btn {
+      background: linear-gradient(180deg, rgba(45, 212, 191, 0.2), rgba(45, 212, 191, 0.12));
+      color: #dffdfa;
+      border-color: rgba(45, 212, 191, 0.4);
+      box-shadow: 0 4px 12px rgba(45, 212, 191, 0.12);
+    }
+    html.pg-theme-dark #take-tour-btn:hover {
+      background: linear-gradient(180deg, rgba(45, 212, 191, 0.26), rgba(45, 212, 191, 0.16));
+      border-color: rgba(45, 212, 191, 0.5);
+    }
 
-    /* Make Browse Samples match Run Code styling */
+    /* Modal close (samples): stronger contrast on cream panel */
+    #close-samples-btn {
+      background: rgba(255, 255, 255, 0.98);
+      color: #111827;
+      border: 1px solid rgba(15, 118, 110, 0.42);
+      font-weight: 700;
+      font-size: 16px;
+      line-height: 1;
+      padding: 6px 12px;
+      min-width: 2.25rem;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(31, 41, 55, 0.1);
+    }
+    #close-samples-btn:hover {
+      background: var(--accent-soft);
+      color: #0f766e;
+      border-color: rgba(15, 118, 110, 0.55);
+    }
+    html.pg-theme-dark #close-samples-btn {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      box-shadow: none;
+    }
+    html.pg-theme-dark #close-samples-btn:hover {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: rgba(45, 212, 191, 0.28);
+      color: var(--accent-hover);
+    }
+    .samples-modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border-color);
+    }
+    #import-sample-btn:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      box-shadow: none;
+      transform: none;
+    }
+
+    /* Browse = secondary (outline) so Run / Connect Project stay the clear primary */
     #browse-samples-btn {
-      background: var(--accent-green) !important;
-      color: white !important;
-      border: 1px solid rgba(4, 120, 87, 0.35) !important;
-      box-shadow: 0 0 10px rgba(16, 185, 129, 0.18);
+      background: rgba(255, 255, 255, 0.95) !important;
+      color: #115e59 !important;
+      border: 1px solid rgba(15, 118, 110, 0.38) !important;
+      box-shadow: none !important;
     }
     #browse-samples-btn:hover {
-      background: var(--accent-green-hover) !important;
-      box-shadow: 0 0 14px rgba(16, 185, 129, 0.28);
+      background: var(--accent-soft) !important;
+      color: #134e4a !important;
+      border-color: rgba(15, 118, 110, 0.5) !important;
+    }
+    html.pg-theme-dark #browse-samples-btn {
+      background: rgba(255, 255, 255, 0.08) !important;
+      color: var(--accent) !important;
+      border-color: rgba(45, 212, 191, 0.35) !important;
+    }
+    html.pg-theme-dark #browse-samples-btn:hover {
+      background: var(--accent-soft) !important;
+      color: var(--accent-hover) !important;
+      border-color: rgba(45, 212, 191, 0.5) !important;
     }
 
-    /* Match Browse Templates to Browse Samples */
-    #browse-templates-btn {
-      background: var(--accent-green) !important;
-      color: white !important;
-      border: 1px solid rgba(4, 120, 87, 0.35) !important;
-      box-shadow: 0 0 10px rgba(16, 185, 129, 0.18);
+    /* Frosted overlay (create project) */
+    #create-project-modal.modal-overlay {
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      background: rgba(17, 24, 39, 0.28);
+      z-index: 55;
     }
-    #browse-templates-btn:hover {
-      background: var(--accent-green-hover) !important;
-      box-shadow: 0 0 14px rgba(16, 185, 129, 0.28);
-    }
-
-    /* Templates modal shares samples styling */
-    .template-pill {
-      font-size: 11px;
-      letter-spacing: 0.8px;
-      text-transform: uppercase;
-      padding: 4px 8px;
-      border-radius: 999px;
-      background: rgba(37,99,235,0.12);
-      border: 1px solid rgba(37,99,235,0.24);
+    .modal.create-project-modal {
+      width: min(520px, calc(100vw - 48px));
+      max-width: 100%;
+      padding: 12px;
+      background: rgba(255, 250, 240, 0.98);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      box-shadow:
+        0 18px 55px rgba(31, 41, 55, 0.22),
+        0 2px 0 rgba(255, 255, 255, 0.7) inset;
       color: var(--text-main);
-      white-space: nowrap;
+    }
+    .create-project-modal .modal-header {
+      border-bottom: 1px solid var(--border-color);
+      margin-bottom: 10px;
+      padding-bottom: 10px;
+    }
+    .create-project-modal .modal-header h3 {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+    .create-project-modal .create-project-close {
+      background: rgba(255, 255, 255, 0.85);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      padding: 6px 10px;
+      border-radius: 8px;
+      font-weight: 600;
+      min-width: auto;
+    }
+    .create-project-modal .create-project-close:hover {
+      background: rgba(255, 255, 255, 0.95);
+      border-color: rgba(31, 41, 55, 0.22);
+    }
+    .create-project-field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .create-project-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+    /* Match .projects-menu-search */
+    #create-project-name-input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 8px 11px;
+      font-size: 13px;
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
+      background: rgba(255, 255, 255, 0.85);
+      color: var(--text-main);
+    }
+    #create-project-name-input::placeholder {
+      color: var(--text-muted);
+    }
+    #create-project-name-input:focus {
+      outline: none;
+      border-color: rgba(15, 118, 110, 0.55);
+      box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12);
+    }
+    #create-project-name-input:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+    }
+    .create-project-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 12px;
+      flex-wrap: wrap;
+    }
+    .create-project-actions button {
+      min-width: 100px;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 13px;
+    }
+    #create-project-cancel-btn {
+      background: rgba(255, 255, 255, 0.85);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+    }
+    #create-project-cancel-btn:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.95);
+      border-color: rgba(31, 41, 55, 0.22);
+    }
+    /* Match primary actions (teal) */
+    #create-project-submit-btn {
+      background: linear-gradient(180deg, #14b8a6, #0f766e);
+      color: #fff;
+      border: 1px solid rgba(15, 118, 110, 0.45);
+    }
+    #create-project-submit-btn:hover:not(:disabled) {
+      background: linear-gradient(180deg, #2dd4bf, #115e59);
+    }
+    #create-project-submit-btn:disabled,
+    #create-project-cancel-btn:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      transform: none;
     }
 
+    html.pg-theme-dark #projects-menu {
+      background: rgba(30, 41, 55, 0.98);
+      box-shadow: 0 18px 55px rgba(0, 0, 0, 0.45);
+    }
+    html.pg-theme-dark .project-row {
+      background: rgba(255, 255, 255, 0.06);
+    }
+    html.pg-theme-dark .project-row:hover {
+      background: rgba(45, 212, 191, 0.12);
+      border-color: rgba(45, 212, 191, 0.25);
+    }
+    html.pg-theme-dark .projects-menu-search {
+      background: rgba(15, 23, 42, 0.65);
+    }
+    html.pg-theme-dark .empty-card {
+      background: rgba(255, 255, 255, 0.04);
+      border-color: rgba(255, 255, 255, 0.14);
+    }
+    html.pg-theme-dark .modal.create-project-modal {
+      background: rgba(30, 41, 55, 0.98);
+      box-shadow: 0 18px 55px rgba(0, 0, 0, 0.4), 0 2px 0 rgba(255, 255, 255, 0.04) inset;
+    }
 
-    /* 5. Terminal / Console Area */
-    #console-output {
-      height: 220px;
-      background: rgba(31,41,55,0.06);
+    /* 5. Terminal — body#… beats bundled style.css #console-output (which used dark-theme --text) */
+    body #console-output {
+      height: clamp(140px, 24vh, 220px);
+      box-sizing: border-box;
+      background: #f0ebe3;
+      color: var(--text-main);
       padding: 12px 15px;
       overflow-y: auto;
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      font-size: 13px;
-      line-height: 1.5;
-      box-shadow: inset 0 2px 10px rgba(31,41,55,0.10);
+      font-size: 14px;
+      line-height: 1.55;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.7), inset 0 2px 8px rgba(31,41,55,0.06);
       border-top: 1px solid var(--border-color);
+      border: 1px solid rgba(31, 41, 55, 0.12);
+      border-radius: 0;
+      margin: 0;
+    }
+    @media (max-height: 820px) {
+      #nexus-ui-container {
+        min-height: 340px;
+      }
+      body #console-output {
+        height: clamp(120px, 20vh, 170px);
+      }
+    }
+    html.pg-theme-dark body #console-output {
+      background: #0d1218;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+      border-color: var(--border-color);
+    }
+    .toast-stack {
+      position: fixed;
+      right: 16px;
+      bottom: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      z-index: 1600;
+      pointer-events: none;
+    }
+    .toast {
+      max-width: min(340px, calc(100vw - 32px));
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(31, 41, 55, 0.2);
+      background: rgba(255, 255, 255, 0.95);
+      color: var(--text-main);
+      font-size: 13px;
+      font-weight: 600;
+      box-shadow: 0 12px 28px rgba(31, 41, 55, 0.2);
+      transform: translateY(0);
+      opacity: 1;
+      transition: transform 180ms ease, opacity 180ms ease;
+    }
+    .toast.toast--success {
+      border-color: rgba(5, 150, 105, 0.45);
+      background: rgba(236, 253, 245, 0.95);
+    }
+    .toast.toast--error {
+      border-color: rgba(220, 38, 38, 0.45);
+      background: rgba(254, 242, 242, 0.96);
+    }
+    .toast.toast--fade {
+      transform: translateY(8px);
+      opacity: 0;
+    }
+    html.pg-theme-dark .toast {
+      background: rgba(15, 23, 42, 0.95);
+      border-color: rgba(148, 163, 184, 0.3);
+      box-shadow: 0 14px 28px rgba(0, 0, 0, 0.45);
+    }
+    html.pg-theme-dark .toast.toast--success {
+      border-color: rgba(45, 212, 191, 0.42);
+      background: rgba(15, 50, 44, 0.92);
+    }
+    html.pg-theme-dark .toast.toast--error {
+      border-color: rgba(248, 113, 113, 0.5);
+      background: rgba(69, 10, 10, 0.9);
     }
   </style>
 </head>
@@ -551,31 +1710,109 @@
     <h1 class="title" aria-label="JSPlayground">
       <span class="title-js">JS</span><span class="title-rest">Playground</span>
     </h1>
+    <div id="title-bar-appearance" class="title-bar-actions">
+      <button
+        type="button"
+        id="appearance-menu-btn"
+        class="appearance-menu-trigger"
+        aria-label="Appearance settings"
+        aria-haspopup="true"
+        aria-expanded="false"
+        aria-controls="appearance-menu-panel"
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+          <circle cx="12" cy="12" r="3" />
+        </svg>
+      </button>
+      <div
+        id="appearance-menu-panel"
+        class="appearance-menu-panel"
+        role="group"
+        aria-label="Appearance"
+        hidden
+      >
+        <div class="appearance-menu-field">
+          <span class="appearance-menu-label" id="appearance-label-theme">Theme</span>
+          <div class="appearance-segment" role="radiogroup" aria-labelledby="appearance-label-theme">
+            <button type="button" id="appearance-theme-light" role="radio" aria-checked="true" aria-pressed="true">Light</button>
+            <button type="button" id="appearance-theme-dark" role="radio" aria-checked="false" aria-pressed="false">Dark</button>
+            <button type="button" id="appearance-theme-system" role="radio" aria-checked="false" aria-pressed="false">System</button>
+          </div>
+        </div>
+        <div class="appearance-menu-field">
+          <span class="appearance-menu-label" id="appearance-label-density">UI density</span>
+          <div class="appearance-segment" role="radiogroup" aria-labelledby="appearance-label-density">
+            <button type="button" id="appearance-density-comfortable" role="radio" aria-checked="true" aria-pressed="true">Comfortable</button>
+            <button type="button" id="appearance-density-compact" role="radio" aria-checked="false" aria-pressed="false">Compact</button>
+          </div>
+        </div>
+        <div class="appearance-menu-field">
+          <span class="appearance-menu-label" id="appearance-label-motion">Motion</span>
+          <div class="appearance-segment" role="radiogroup" aria-labelledby="appearance-label-motion">
+            <button type="button" id="appearance-motion-standard" role="radio" aria-checked="true" aria-pressed="true">Standard</button>
+            <button type="button" id="appearance-motion-reduced" role="radio" aria-checked="false" aria-pressed="false">Reduced</button>
+          </div>
+        </div>
+        <div class="appearance-menu-field">
+          <span class="appearance-menu-label" id="appearance-label-ui-font">UI text size</span>
+          <div class="appearance-segment" role="radiogroup" aria-labelledby="appearance-label-ui-font">
+            <button type="button" id="appearance-ui-font-small" role="radio" aria-checked="false" aria-pressed="false">Small</button>
+            <button type="button" id="appearance-ui-font-medium" role="radio" aria-checked="true" aria-pressed="true">Medium</button>
+            <button type="button" id="appearance-ui-font-large" role="radio" aria-checked="false" aria-pressed="false">Large</button>
+          </div>
+        </div>
+        <div class="appearance-menu-field">
+          <label class="appearance-menu-label" for="appearance-font-range">Editor font size</label>
+          <div class="appearance-font-row">
+            <input type="range" id="appearance-font-range" min="12" max="18" step="1" value="14" aria-describedby="appearance-font-value" />
+            <span class="appearance-font-value" id="appearance-font-value" aria-live="polite">14px</span>
+          </div>
+        </div>
+      </div>
+    </div>
   </header>
 
-  <!-- TOP BAR: Authentication & Cloud Sync -->
+  <!-- TOP BAR: Project & account -->
   <div id="top-bar">
     <div class="header-groups">
-      <section class="toolbar-group" aria-label="Session">
-        <div class="toolbar-label">Session</div>
-        <div class="toolbar-row">
-          <button id="auth-btn" type="button">Login</button>
-          <span id="auth-status" role="status" aria-live="polite">Status: Offline Sandbox</span>
-        </div>
-      </section>
-
       <section class="toolbar-group toolbar-group-wide" aria-label="Project">
         <div class="toolbar-label">Project</div>
         <div class="toolbar-row">
-          <div id="projects-dropdown">
-            <button id="list-projects-btn" type="button" aria-haspopup="menu" aria-expanded="false">List Projects</button>
-            <div id="projects-menu" role="menu" aria-label="Projects" hidden></div>
+          <div class="toolbar-cluster">
+            <span class="toolbar-cluster-label">Account</span>
+            <button id="auth-btn" type="button">Login</button>
           </div>
-          <input type="text" id="project-input" inputmode="text" autocomplete="off" aria-label="Project UUID" placeholder="Paste Project UUID here...">
-          <button id="connect-btn" type="button">Connect Cloud</button>
-          <button id="open-project-btn" type="button" disabled>Open Project</button>
-          <span id="mode-badge" class="mode-badge" aria-label="Mode">Offline</span>
-          <span id="project-name-badge" class="mode-badge" aria-label="Connected project name">No project</span>
+          <div class="toolbar-cluster">
+            <span class="toolbar-cluster-label">Project</span>
+            <div id="projects-dropdown">
+              <button id="list-projects-btn" type="button" aria-haspopup="menu" aria-expanded="false">List Projects</button>
+              <div id="projects-menu" role="menu" aria-label="Projects" hidden></div>
+            </div>
+            <button id="create-project-btn" type="button" aria-label="Create new cloud project on your account">New project</button>
+            <input type="text" id="project-input" inputmode="text" autocomplete="off" aria-label="Studio URL or project ID" placeholder="https://beta.audiotool.com/studio?project=<project-id>">
+            <button id="connect-btn" type="button">Connect Project</button>
+            <button id="open-project-btn" type="button" disabled>Open Project</button>
+          </div>
+          <div class="toolbar-cluster">
+            <span class="toolbar-cluster-label">Help</span>
+            <button id="take-tour-btn" type="button" class="btn-secondary">Take tour</button>
+          </div>
+        </div>
+        <div class="playground-status-bar">
+          <span id="playground-status" role="status" aria-live="polite">
+            <span id="playground-mode-badge" class="status-mode-badge mode-offline">Offline</span>
+            <span id="playground-status-text">Offline mode · run without logging in; log in for cloud</span>
+          </span>
+          <p id="playground-cloud-hint" class="playground-cloud-hint" hidden>
+            To sync with Audiotool Studio: paste a project URL or ID, or use <strong>List Projects</strong> / <strong>New project</strong>, then <strong>Connect Project</strong>. Run your code, then <strong>Open Project</strong>.
+          </p>
+          <ol id="playground-steps" class="playground-steps" aria-label="Suggested flow">
+            <li class="playground-step" data-step="login">1. Log in</li>
+            <li class="playground-step" data-step="connect">2. Connect project</li>
+            <li class="playground-step" data-step="run">3. Run code</li>
+            <li class="playground-step" data-step="open">4. Open project</li>
+          </ol>
         </div>
       </section>
 
@@ -589,8 +1826,7 @@
       <div class="toolbar pane-header" role="toolbar" aria-label="JavaScript editor">
         <div class="editor-toolbar-left">
           <h3 class="editor-toolbar-title">JavaScript Editor</h3>
-          <button id="browse-samples-btn" type="button" class="btn-secondary">Browse Samples</button>
-          <button id="browse-templates-btn" type="button" class="btn-secondary">Browse Templates</button>
+          <button id="browse-samples-btn" type="button" class="btn-secondary">Samples</button>
         </div>
         <button id="run-btn" type="button" class="action-btn">Run Code ▷</button>
       </div>
@@ -605,12 +1841,49 @@
       <div id="nexus-ui-container">
         <div id="preview-empty" class="empty-state">
           <div class="empty-card" aria-hidden="true">
-            <div class="empty-title">Your UI preview will appear here</div>
-            <div class="empty-text">Run the selected template to render controls and interactive output.</div>
-            <div class="empty-hints">
-              <span>1. Choose template</span>
-              <span>2. Connect project (optional)</span>
-              <span>3. Run code</span>
+            <div class="empty-eyebrow">Interactive canvas</div>
+            <div class="empty-text">
+              Run code to render controls here, or start with a sample and iterate from there.
+            </div>
+
+            <div class="empty-actions">
+              <button type="button" class="empty-cta empty-cta--primary" data-empty-action="samples">
+                Browse Samples
+              </button>
+              <button type="button" class="empty-cta empty-cta--ghost" data-empty-action="run">
+                Run Code
+              </button>
+            </div>
+            <div class="empty-workflows" role="note">
+              <div class="empty-workflow empty-workflow--default">
+                <div class="empty-workflow-head empty-workflow-head--default">
+                  <span class="empty-workflow-icon" aria-hidden="true">⚡</span>
+                  Offline mode
+                </div>
+                <p class="empty-workflow-tagline">
+                  Fastest path to a first result. No login required.
+                </p>
+                <ol class="empty-workflow-steps">
+                  <li><span class="wf-action">Browse Samples</span> or write code</li>
+                  <li><span class="wf-action">Run Code</span> to generate UI</li>
+                </ol>
+              </div>
+
+              <div class="empty-workflow empty-workflow--studio">
+                <div class="empty-workflow-head">
+                  <span class="empty-workflow-icon" aria-hidden="true">☁️</span>
+                  Studio mode
+                </div>
+                <p class="empty-workflow-tagline">
+                  Connect a cloud project, then sync and open it in Audiotool Studio.
+                </p>
+                <ol class="empty-workflow-steps">
+                  <li><span class="wf-action">Log in</span></li>
+                  <li>Select a project or paste a URL</li>
+                  <li><span class="wf-action">Connect Project</span></li>
+                  <li>Run code, then <span class="wf-action">Open Project</span></li>
+                </ol>
+              </div>
             </div>
           </div>
         </div>
@@ -619,6 +1892,7 @@
       <div id="console-output" role="log" aria-live="polite" aria-relevant="additions"></div>
     </div>
   </div>
+  <div id="toast-stack" class="toast-stack" aria-live="polite" aria-atomic="false"></div>
 
   <script>
     (() => {
@@ -716,14 +1990,30 @@
   </script>
 
   <!-- SAMPLES MODAL -->
-  <div id="samples-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-label="Code samples" aria-hidden="true" style="display: none;">
+  <div id="samples-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-label="Samples" aria-hidden="true" style="display: none;">
     <div class="modal" role="document">
       <div class="modal-header">
-        <h3>Code Samples Gallery</h3>
-        <button id="close-samples-btn" type="button" class="btn-secondary" aria-label="Close samples">✕</button>
+        <h3>Samples</h3>
+        <button id="close-samples-btn" type="button" class="btn-secondary" aria-label="Close">✕</button>
       </div>
-      <p class="modal-subtitle">Load pre-written scripts to see SDK routing and UI building in action.</p>
+      <p class="modal-subtitle">Samples are grouped by mode so you can start with what works for your current setup.</p>
       <div class="samples-list">
+        <div class="samples-section-heading">Offline (No Login Required)</div>
+        <button type="button" class="sample-btn load-sample-btn" data-sample="offlineSynthDelayPlayground">
+          <span class="sample-pill">Offline</span>
+          <div>
+            <div>Offline Synth + Delay Playground</div>
+            <div class="sample-meta">Create Heisenberg + Delay, then control gain/mix/feedback with Nexus dials.</div>
+          </div>
+        </button>
+        <button type="button" class="sample-btn load-sample-btn" data-sample="offlinePianoPresets">
+          <span class="sample-pill">Offline</span>
+          <div>
+            <div>Offline Piano + Presets</div>
+            <div class="sample-meta">Play a piano UI and switch Pluck/Pad/Lead/Ambient presets with buttons.</div>
+          </div>
+        </button>
+        <div class="samples-section-heading">Cloud / Studio (Login + Project Connection)</div>
         <button type="button" class="sample-btn load-sample-btn" data-sample="starterChain">
           <span class="sample-pill">Routing</span>
           <div>
@@ -745,48 +2035,60 @@
             <div class="sample-meta">Render UI and update a field in the engine.</div>
           </div>
         </button>
-        <button type="button" class="sample-btn load-sample-btn" data-sample="offlineDashboard">
-          <span class="sample-pill">Offline</span>
+        <button type="button" class="sample-btn load-sample-btn" data-sample="abcVisualizer">
+          <span class="sample-pill">Notation</span>
           <div>
-            <div>Mini Synth Dashboard (Piano + Volume)</div>
-            <div class="sample-meta">Piano keys + slider UI for offline exploration.</div>
+            <div>ABC visualizer + timeline import</div>
+            <div class="sample-meta">Render score in canvas and import notes to a synced cloud project.</div>
           </div>
         </button>
+        <div class="samples-section-heading">Templates</div>
+        <p class="samples-section-note">These replace the entire editor with a fresh starter script grouped by mode.</p>
+        <button type="button" class="sample-btn load-sample-btn" data-sample="templateOffline" data-kind="template">
+          <span class="sample-pill sample-pill--template">Template</span>
+          <div>
+            <div>Offline UI (NexusUI)</div>
+            <div class="sample-meta">Draw controls with NexusUI and update the local engine.</div>
+          </div>
+        </button>
+        <button type="button" class="sample-btn load-sample-btn" data-sample="templateCheatsheet" data-kind="template">
+          <span class="sample-pill sample-pill--template">Template</span>
+          <div>
+            <div>SDK cheat sheet</div>
+            <div class="sample-meta">Vocabulary + how to discover fields and knobs.</div>
+          </div>
+        </button>
+        <button type="button" class="sample-btn load-sample-btn" data-sample="templateOnline" data-kind="template">
+          <span class="sample-pill sample-pill--template">Template</span>
+          <div>
+            <div>Cloud routing (real Studio)</div>
+            <div class="sample-meta">Spawn devices + cables; best when connected to a project.</div>
+          </div>
+        </button>
+      </div>
+      <div class="samples-modal-actions">
+        <button id="import-sample-btn" type="button" class="action-btn" disabled>Import to Editor</button>
       </div>
     </div>
   </div>
 
-  <!-- TEMPLATES MODAL -->
-  <div id="templates-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-label="Templates" aria-hidden="true" style="display: none;">
-    <div class="modal" role="document">
+  <!-- CREATE PROJECT MODAL -->
+  <div id="create-project-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="create-project-title" aria-hidden="true" style="display: none;">
+    <div class="modal create-project-modal" role="document">
       <div class="modal-header">
-        <h3>Templates</h3>
-        <button id="close-templates-btn" type="button" class="btn-secondary" aria-label="Close templates">✕</button>
+        <h3 id="create-project-title">Create New Project</h3>
+        <button id="close-create-project-btn" type="button" class="create-project-close" aria-label="Close">✕</button>
       </div>
-      <p class="modal-subtitle">Pick a template to load into the editor. You can still use the dropdown for quick switching.</p>
-      <div class="samples-list">
-        <button type="button" class="sample-btn load-template-btn" data-template="offline">
-          <span class="template-pill">Offline</span>
-          <div>
-            <div>Offline UI (NexusUI)</div>
-            <div class="sample-meta">Draw controls and update local engine fields.</div>
-          </div>
-        </button>
-        <button type="button" class="sample-btn load-template-btn" data-template="online">
-          <span class="template-pill">Cloud</span>
-          <div>
-            <div>Cloud Routing (Real Studio)</div>
-            <div class="sample-meta">Spawn devices + cables. Best when connected.</div>
-          </div>
-        </button>
-        <button type="button" class="sample-btn load-template-btn" data-template="cheatsheet">
-          <span class="template-pill">Reference</span>
-          <div>
-            <div>SDK Cheat Sheet</div>
-            <div class="sample-meta">Vocabulary + discover fields/knobs.</div>
-          </div>
-        </button>
-      </div>
+      <form id="create-project-form" novalidate>
+        <div class="create-project-field">
+          <label for="create-project-name-input" class="create-project-label">Project name</label>
+          <input type="text" id="create-project-name-input" name="projectName" autocomplete="off" spellcheck="false" placeholder="e.g. My new beat" />
+        </div>
+        <div class="create-project-actions">
+          <button type="button" id="create-project-cancel-btn" class="btn-secondary">Cancel</button>
+          <button type="submit" id="create-project-submit-btn">Create &amp; connect</button>
+        </div>
+      </form>
     </div>
   </div>
 
