@@ -12,6 +12,10 @@ function readAppearance() {
         o.theme === "dark" || o.theme === "system" ? o.theme : "light",
       density: o.density === "compact" ? "compact" : "comfortable",
       motion: o.motion === "reduced" ? "reduced" : "standard",
+      uiFontSize:
+        o.uiFontSize === "small" || o.uiFontSize === "large"
+          ? o.uiFontSize
+          : "medium",
       editorFontSize: Math.min(
         18,
         Math.max(12, parseInt(o.editorFontSize, 10) || 14),
@@ -22,6 +26,7 @@ function readAppearance() {
       theme: "light",
       density: "comfortable",
       motion: "standard",
+      uiFontSize: "medium",
       editorFontSize: 14,
     };
   }
@@ -56,6 +61,12 @@ function applyMotionPreference(motion) {
   );
 }
 
+function applyUIFontSize(uiFontSize) {
+  const root = document.documentElement;
+  root.classList.toggle("pg-ui-font-small", uiFontSize === "small");
+  root.classList.toggle("pg-ui-font-large", uiFontSize === "large");
+}
+
 function applyEditorFontSize(px) {
   const n = Math.min(18, Math.max(12, px));
   ctx.editor?.updateOptions({ fontSize: n });
@@ -80,17 +91,22 @@ export function initAppearanceMenu() {
     "appearance-motion-standard",
   );
   const motionReducedBtn = document.getElementById("appearance-motion-reduced");
+  const uiFontSmallBtn = document.getElementById("appearance-ui-font-small");
+  const uiFontMediumBtn = document.getElementById("appearance-ui-font-medium");
+  const uiFontLargeBtn = document.getElementById("appearance-ui-font-large");
   const fontRange = document.getElementById("appearance-font-range");
   const fontValueEl = document.getElementById("appearance-font-value");
   const themeGroup = themeLightBtn?.parentElement || null;
   const densityGroup = densityComfortableBtn?.parentElement || null;
   const motionGroup = motionStandardBtn?.parentElement || null;
+  const uiFontGroup = uiFontSmallBtn?.parentElement || null;
 
   function syncAppearanceUIFromState() {
     const s = readAppearance();
     applyPlaygroundTheme(s.theme);
     applyPlaygroundDensity(s.density);
     applyMotionPreference(s.motion);
+    applyUIFontSize(s.uiFontSize);
     const fs = applyEditorFontSize(s.editorFontSize);
 
     themeLightBtn?.setAttribute(
@@ -149,6 +165,30 @@ export function initAppearanceMenu() {
       "aria-checked",
       s.motion === "reduced" ? "true" : "false",
     );
+    uiFontSmallBtn?.setAttribute(
+      "aria-pressed",
+      s.uiFontSize === "small" ? "true" : "false",
+    );
+    uiFontSmallBtn?.setAttribute(
+      "aria-checked",
+      s.uiFontSize === "small" ? "true" : "false",
+    );
+    uiFontMediumBtn?.setAttribute(
+      "aria-pressed",
+      s.uiFontSize === "medium" ? "true" : "false",
+    );
+    uiFontMediumBtn?.setAttribute(
+      "aria-checked",
+      s.uiFontSize === "medium" ? "true" : "false",
+    );
+    uiFontLargeBtn?.setAttribute(
+      "aria-pressed",
+      s.uiFontSize === "large" ? "true" : "false",
+    );
+    uiFontLargeBtn?.setAttribute(
+      "aria-checked",
+      s.uiFontSize === "large" ? "true" : "false",
+    );
     if (fontRange) fontRange.value = String(fs);
     if (fontRange) fontRange.setAttribute("aria-valuetext", `${fs} pixels`);
     if (fontValueEl) fontValueEl.textContent = `${fs}px`;
@@ -178,6 +218,16 @@ export function initAppearanceMenu() {
       syncTabStop(
         [motionStandardBtn, motionReducedBtn],
         s.motion === "reduced" ? motionReducedBtn : motionStandardBtn,
+      );
+    }
+    if (uiFontSmallBtn && uiFontMediumBtn && uiFontLargeBtn) {
+      syncTabStop(
+        [uiFontSmallBtn, uiFontMediumBtn, uiFontLargeBtn],
+        s.uiFontSize === "small"
+          ? uiFontSmallBtn
+          : s.uiFontSize === "large"
+            ? uiFontLargeBtn
+            : uiFontMediumBtn,
       );
     }
   }
@@ -260,6 +310,11 @@ export function initAppearanceMenu() {
     syncAppearanceUIFromState();
   }
 
+  function setUIFontSizeChoice(uiFontSize) {
+    persistAppearance({ uiFontSize });
+    syncAppearanceUIFromState();
+  }
+
   function setupRadioGroupKeyboard(groupEl, buttons, onSelect) {
     if (!groupEl || !buttons.length) return;
     groupEl.addEventListener("keydown", (event) => {
@@ -314,6 +369,9 @@ export function initAppearanceMenu() {
   );
   motionStandardBtn?.addEventListener("click", () => setMotionChoice("standard"));
   motionReducedBtn?.addEventListener("click", () => setMotionChoice("reduced"));
+  uiFontSmallBtn?.addEventListener("click", () => setUIFontSizeChoice("small"));
+  uiFontMediumBtn?.addEventListener("click", () => setUIFontSizeChoice("medium"));
+  uiFontLargeBtn?.addEventListener("click", () => setUIFontSizeChoice("large"));
 
   setupRadioGroupKeyboard(
     themeGroup,
@@ -339,6 +397,18 @@ export function initAppearanceMenu() {
     motionGroup,
     [motionStandardBtn, motionReducedBtn].filter(Boolean),
     (button) => setMotionChoice(button === motionReducedBtn ? "reduced" : "standard"),
+  );
+  setupRadioGroupKeyboard(
+    uiFontGroup,
+    [uiFontSmallBtn, uiFontMediumBtn, uiFontLargeBtn].filter(Boolean),
+    (button) =>
+      setUIFontSizeChoice(
+        button === uiFontSmallBtn
+          ? "small"
+          : button === uiFontLargeBtn
+            ? "large"
+            : "medium",
+      ),
   );
 
   const systemThemeQuery = window.matchMedia?.("(prefers-color-scheme: dark)");

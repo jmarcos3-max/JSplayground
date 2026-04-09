@@ -23,6 +23,8 @@
         el.dataset.pgEditorFont = String(Math.min(18, Math.max(12, fs)));
         if (o.density === "compact") el.classList.add("pg-density-compact");
         if (o.motion === "reduced") el.classList.add("pg-reduced-motion");
+        if (o.uiFontSize === "small") el.classList.add("pg-ui-font-small");
+        if (o.uiFontSize === "large") el.classList.add("pg-ui-font-large");
       } catch (e) {}
     })();
   </script>
@@ -632,6 +634,36 @@
       transition: none !important;
       animation: none !important;
       scroll-behavior: auto !important;
+    }
+    html.pg-ui-font-small button,
+    html.pg-ui-font-small input[type="text"],
+    html.pg-ui-font-small select,
+    html.pg-ui-font-small .sample-meta,
+    html.pg-ui-font-small .modal-subtitle {
+      font-size: 12px;
+    }
+    html.pg-ui-font-small .toolbar-label,
+    html.pg-ui-font-small .pane-header {
+      font-size: 11px;
+    }
+    html.pg-ui-font-small #playground-status,
+    html.pg-ui-font-small #playground-cloud-hint {
+      font-size: 12px;
+    }
+    html.pg-ui-font-large button,
+    html.pg-ui-font-large input[type="text"],
+    html.pg-ui-font-large select,
+    html.pg-ui-font-large .sample-meta,
+    html.pg-ui-font-large .modal-subtitle {
+      font-size: 14px;
+    }
+    html.pg-ui-font-large .toolbar-label,
+    html.pg-ui-font-large .pane-header {
+      font-size: 13px;
+    }
+    html.pg-ui-font-large #playground-status,
+    html.pg-ui-font-large #playground-cloud-hint {
+      font-size: 14px;
     }
 
     button.action-btn {
@@ -1720,6 +1752,14 @@
           <div class="appearance-segment" role="radiogroup" aria-labelledby="appearance-label-motion">
             <button type="button" id="appearance-motion-standard" role="radio" aria-checked="true" aria-pressed="true">Standard</button>
             <button type="button" id="appearance-motion-reduced" role="radio" aria-checked="false" aria-pressed="false">Reduced</button>
+          </div>
+        </div>
+        <div class="appearance-menu-field">
+          <span class="appearance-menu-label" id="appearance-label-ui-font">UI text size</span>
+          <div class="appearance-segment" role="radiogroup" aria-labelledby="appearance-label-ui-font">
+            <button type="button" id="appearance-ui-font-small" role="radio" aria-checked="false" aria-pressed="false">Small</button>
+            <button type="button" id="appearance-ui-font-medium" role="radio" aria-checked="true" aria-pressed="true">Medium</button>
+            <button type="button" id="appearance-ui-font-large" role="radio" aria-checked="false" aria-pressed="false">Large</button>
           </div>
         </div>
         <div class="appearance-menu-field">
