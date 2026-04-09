@@ -1,402 +1,1877 @@
-<!doctype html>
-<html lang="en" class="theme-light">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Monaco Playground Sandbox</title>
-    <script type="module" crossorigin src="/JSplayground/assets/index-B8m0f_DA.js"></script>
-    <link rel="stylesheet" crossorigin href="/JSplayground/assets/index-D4cKG2PH.css">
-  </head>
-  <body>
-    <div class="layout">
-      <header class="topbar" id="topbar">
-        <div class="topbar-inner">
-          <div class="logo" aria-hidden="true">
-            <span class="logo-js">JS</span>
-          </div>
-          <div class="topbar-title">
-            <h1><span class="title-brand">JS</span> Playground</h1>
-            <p class="topbar-subtitle">Run code in an isolated sandbox · Sync to Audiotool</p>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Audiotool SDK Playground</title>
+  <script>
+    (function () {
+      try {
+        var raw = localStorage.getItem("playground-appearance");
+        var o = raw ? JSON.parse(raw) : {};
+        var el = document.documentElement;
+        if (o.theme === "dark") el.classList.add("pg-theme-dark");
+        var fs = parseInt(o.editorFontSize, 10);
+        if (!Number.isFinite(fs)) fs = 14;
+        el.dataset.pgEditorFont = String(Math.min(18, Math.max(12, fs)));
+        if (o.density === "compact") el.classList.add("pg-density-compact");
+      } catch (e) {}
+    })();
+  </script>
+  <style>
+    /* 1. Modern Color Palette & Typography */
+    :root {
+      /* Cream / warm light theme — one accent family (teal) so title + buttons don’t clash */
+      --bg-base: #fbf6ea;
+      --bg-panel: #fffaf0;
+      --bg-header: #f3ead6;
+      --accent: #0f766e;
+      --accent-hover: #115e59;
+      --accent-soft: rgba(15, 118, 110, 0.14);
+      --accent-blue: #0f766e;
+      --accent-blue-hover: #115e59;
+      --accent-green: #0f766e;
+      --accent-green-hover: #115e59;
+      --text-main: #1f2937;
+      --text-muted: #6b7280;
+      --border-color: rgba(31, 41, 55, 0.14);
+    }
+
+    html.pg-theme-dark {
+      color-scheme: dark;
+      --bg-base: #0c1118;
+      --bg-panel: #141c28;
+      --bg-header: #101820;
+      --accent: #2dd4bf;
+      --accent-hover: #5eead4;
+      --accent-soft: rgba(45, 212, 191, 0.16);
+      --accent-blue: #2dd4bf;
+      --accent-blue-hover: #5eead4;
+      --accent-green: #2dd4bf;
+      --accent-green-hover: #5eead4;
+      --text-main: #e5e7eb;
+      --text-muted: #9ca3af;
+      --border-color: rgba(229, 231, 235, 0.12);
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      margin: 0;
+      background: var(--bg-base);
+      color: var(--text-main);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      overflow: hidden;
+    }
+
+    /* Custom Scrollbars for a sleek look */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: var(--bg-base); }
+    ::-webkit-scrollbar-thumb { background: rgba(31,41,55,0.28); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(31,41,55,0.38); }
+
+    /* 2. Top Navigation Bar */
+    #title-bar {
+      padding: 18px 22px;
+      background: var(--bg-header);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      z-index: 11;
+    }
+
+    #title-bar .title {
+      font-weight: 900;
+      letter-spacing: -0.8px;
+      font-size: 28px;
+      user-select: none;
+      white-space: nowrap;
+      margin: 0;
+      line-height: 1;
+    }
+    #title-bar .title .title-js { color: var(--accent); }
+    #title-bar .title .title-rest { color: #3f3f3a; }
+    html.pg-theme-dark #title-bar .title .title-rest { color: #cbd5e1; }
+
+    #title-bar .title-bar-actions {
+      position: absolute;
+      right: 18px;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 12;
+    }
+    .appearance-menu-trigger {
+      width: 40px;
+      height: 40px;
+      padding: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      cursor: pointer;
+      box-shadow: 0 1px 2px rgba(31, 41, 55, 0.06);
+    }
+    html.pg-theme-dark .appearance-menu-trigger {
+      background: rgba(255, 255, 255, 0.08);
+      box-shadow: none;
+    }
+    .appearance-menu-trigger:hover {
+      background: rgba(255, 255, 255, 0.92);
+      border-color: rgba(15, 118, 110, 0.35);
+    }
+    html.pg-theme-dark .appearance-menu-trigger:hover {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: rgba(45, 212, 191, 0.35);
+    }
+    .appearance-menu-trigger[aria-expanded="true"] {
+      border-color: rgba(15, 118, 110, 0.5);
+      box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.15);
+    }
+    html.pg-theme-dark .appearance-menu-trigger[aria-expanded="true"] {
+      border-color: rgba(45, 212, 191, 0.45);
+      box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.12);
+    }
+    .appearance-menu-panel {
+      position: absolute;
+      top: calc(100% + 8px);
+      right: 0;
+      width: min(288px, calc(100vw - 36px));
+      padding: 14px 14px 12px;
+      background: rgba(255, 250, 240, 0.98);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      box-shadow:
+        0 18px 48px rgba(31, 41, 55, 0.2),
+        0 2px 0 rgba(255, 255, 255, 0.65) inset;
+    }
+    html.pg-theme-dark .appearance-menu-panel {
+      background: rgba(30, 41, 55, 0.98);
+      box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
+    }
+    .appearance-menu-panel[hidden] {
+      display: none !important;
+    }
+    .appearance-menu-field {
+      margin-bottom: 14px;
+    }
+    .appearance-menu-field:last-child {
+      margin-bottom: 0;
+    }
+    .appearance-menu-label {
+      display: block;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin: 0 0 6px 0;
+    }
+    .appearance-segment {
+      display: flex;
+      gap: 6px;
+    }
+    .appearance-segment button {
+      flex: 1;
+      margin: 0;
+      padding: 8px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      background: rgba(255, 255, 255, 0.75);
+      color: var(--text-main);
+      cursor: pointer;
+    }
+    html.pg-theme-dark .appearance-segment button {
+      background: rgba(255, 255, 255, 0.06);
+    }
+    .appearance-segment button[aria-pressed="true"] {
+      background: linear-gradient(180deg, #14b8a6, #0f766e);
+      color: #fff;
+      border-color: rgba(15, 118, 110, 0.45);
+    }
+    html.pg-theme-dark .appearance-segment button[aria-pressed="true"] {
+      background: linear-gradient(180deg, #14b8a6, #0d9488);
+      border-color: rgba(45, 212, 191, 0.35);
+    }
+    .appearance-segment button[aria-pressed="false"]:hover {
+      background: rgba(255, 255, 255, 0.95);
+      border-color: rgba(31, 41, 55, 0.22);
+    }
+    html.pg-theme-dark .appearance-segment button[aria-pressed="false"]:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+    .appearance-font-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 2px;
+    }
+    .appearance-font-row input[type="range"] {
+      flex: 1;
+      min-width: 0;
+      accent-color: var(--accent);
+    }
+    .appearance-font-value {
+      min-width: 2.75rem;
+      font-size: 12px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      color: var(--text-muted);
+      text-align: right;
+    }
+
+    /* Comfortable = default layout; compact tightens chrome */
+    html.pg-density-compact #title-bar {
+      padding: 12px 18px;
+    }
+    html.pg-density-compact #title-bar .title {
+      font-size: 24px;
+    }
+    html.pg-density-compact #top-bar {
+      padding: 11px 16px;
+      gap: 12px;
+    }
+    html.pg-density-compact .toolbar-group {
+      padding: 7px 10px;
+      gap: 6px;
+    }
+    html.pg-density-compact .toolbar-row {
+      gap: 8px;
+    }
+    html.pg-density-compact .playground-status-bar {
+      margin-top: 2px;
+      padding-top: 7px;
+    }
+    html.pg-density-compact #playground-status {
+      font-size: 12px;
+    }
+    html.pg-density-compact #main-content {
+      padding-top: 10px;
+    }
+    html.pg-density-compact .toolbar.pane-header {
+      padding: 10px 14px;
+      gap: 12px;
+    }
+    html.pg-density-compact .toolbar.pane-header #run-btn {
+      padding: 9px 20px;
+      font-size: 14px;
+    }
+    html.pg-density-compact .editor-toolbar-title {
+      font-size: 11px;
+      padding-left: 8px;
+    }
+    html.pg-density-compact .pane-header {
+      padding: 7px 14px;
+    }
+    html.pg-density-compact #right-pane .pane-header:first-child {
+      padding-top: 9px;
+    }
+    html.pg-density-compact .empty-state {
+      inset: 12px;
+    }
+    html.pg-density-compact .empty-card {
+      padding: 14px;
+    }
+    html.pg-density-compact body #console-output {
+      height: 180px;
+      padding: 10px 12px;
+      font-size: 13px;
+    }
+
+    #top-bar {
+      padding: 16px 22px;
+      background: var(--bg-header);
+      display: flex;
+      gap: 16px;
+      align-items: stretch;
+      border-bottom: 1px solid var(--border-color);
+      box-shadow: 0 2px 8px rgba(62, 56, 45, 0.08);
+      z-index: 10;
+    }
+
+    .header-groups {
+      display: flex;
+      gap: 14px;
+      align-items: stretch;
+      width: 100%;
+      min-width: 0;
+    }
+
+    .toolbar-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 10px 12px;
+      border: 1px solid rgba(31, 41, 55, 0.14);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.72);
+      min-width: 220px;
+    }
+
+    /* Allow shrinking so PROJECT controls wrap instead of clipping when the window is narrow */
+    .toolbar-group-wide { flex: 1 1 auto; min-width: 0; }
+
+    /* Dark: Project row must use the same family as the rest of the shell (not a cream card). */
+    html.pg-theme-dark #top-bar {
+      box-shadow: 0 2px 14px rgba(0, 0, 0, 0.45);
+    }
+    html.pg-theme-dark .toolbar-group {
+      background: rgba(255, 255, 255, 0.045);
+      border-color: var(--border-color);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+    html.pg-theme-dark .playground-status-bar {
+      border-top-color: rgba(255, 255, 255, 0.1);
+    }
+    html.pg-theme-dark #top-bar input[type="text"] {
+      background: rgba(15, 23, 42, 0.55);
+      border-color: rgba(255, 255, 255, 0.12);
+    }
+    html.pg-theme-dark #top-bar #auth-btn,
+    html.pg-theme-dark #top-bar #list-projects-btn,
+    html.pg-theme-dark #top-bar #create-project-btn,
+    html.pg-theme-dark #top-bar #open-project-btn {
+      background: rgba(255, 255, 255, 0.07);
+      border-color: rgba(255, 255, 255, 0.12);
+      color: var(--text-main);
+    }
+    html.pg-theme-dark #top-bar #auth-btn:hover,
+    html.pg-theme-dark #top-bar #list-projects-btn:hover,
+    html.pg-theme-dark #top-bar #create-project-btn:hover,
+    html.pg-theme-dark #top-bar #open-project-btn:hover {
+      background: rgba(255, 255, 255, 0.13);
+      border-color: rgba(255, 255, 255, 0.22);
+    }
+
+    .toolbar-label {
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-main);
+      line-height: 1;
+      user-select: none;
+    }
+
+    .toolbar-row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .playground-status-bar {
+      margin-top: 4px;
+      padding-top: 10px;
+      border-top: 1px solid rgba(31, 41, 55, 0.1);
+    }
+    #playground-status {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-main);
+      opacity: 0.82;
+      letter-spacing: 0.01em;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+    html.pg-theme-dark #playground-status {
+      opacity: 1;
+      color: #e2e8f0;
+    }
+    #playground-cloud-hint {
+      margin: 6px 0 0 0;
+      padding: 0;
+      font-size: 12px;
+      line-height: 1.45;
+      font-weight: 500;
+      color: var(--text-muted);
+      max-width: 48rem;
+    }
+    #playground-cloud-hint[hidden] {
+      display: none !important;
+    }
+    html.pg-theme-dark #playground-cloud-hint {
+      color: #94a3b8;
+    }
+
+    input[type="text"], select {
+      padding: 8px 12px;
+      background: rgba(255,255,255,0.85);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input[type="text"]:focus, select:focus { border-color: var(--accent-blue); }
+    input[type="text"] { width: 260px; }
+    #top-bar input[type="text"]::placeholder {
+      color: var(--text-muted);
+      opacity: 1;
+    }
+    #top-bar input[type="text"] {
+      color: var(--text-main);
+      font-weight: 500;
+    }
+
+    /* Modern Buttons */
+    button {
+      background: var(--accent-blue);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      cursor: pointer;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 13px;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    button:hover { background: var(--accent-blue-hover); transform: translateY(-1px); }
+    button:active { transform: translateY(0); }
+    button:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+
+    /* Button hierarchy */
+    #auth-btn,
+    #list-projects-btn,
+    #create-project-btn,
+    #open-project-btn {
+      background: rgba(255, 255, 255, 0.85);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+    }
+    /* Extra specificity so button base color never "wins" */
+    #top-bar #auth-btn,
+    #top-bar #list-projects-btn,
+    #top-bar #create-project-btn,
+    #top-bar #open-project-btn {
+      color: var(--text-main);
+    }
+    #auth-btn:hover,
+    #list-projects-btn:hover,
+    #create-project-btn:hover,
+    #open-project-btn:hover {
+      background: rgba(255, 255, 255, 0.95);
+      border-color: rgba(31, 41, 55, 0.22);
+    }
+    #top-bar #auth-btn,
+    #top-bar #list-projects-btn,
+    #top-bar #create-project-btn,
+    #top-bar #open-project-btn {
+      color: var(--text-main);
+      font-weight: 700;
+    }
+    #connect-btn {
+      background: var(--accent-blue);
+      color: white;
+    }
+    #connect-btn:hover { background: var(--accent-blue-hover); }
+
+    /* Cloud actions disabled until signed in */
+    #top-bar #list-projects-btn:disabled,
+    #top-bar #create-project-btn:disabled,
+    #top-bar #connect-btn:disabled {
+      opacity: 0.4;
+      filter: grayscale(0.35);
+      box-shadow: none;
+    }
+    html.pg-theme-dark #top-bar #list-projects-btn:disabled,
+    html.pg-theme-dark #top-bar #create-project-btn:disabled,
+    html.pg-theme-dark #top-bar #connect-btn:disabled {
+      opacity: 0.36;
+      filter: grayscale(0.28);
+    }
+    #top-bar #list-projects-btn:disabled:hover,
+    #top-bar #create-project-btn:disabled:hover {
+      transform: none;
+      background: rgba(255, 255, 255, 0.85);
+    }
+    #top-bar #connect-btn:disabled:hover {
+      transform: none;
+      background: var(--accent-blue);
+      opacity: 0.4;
+    }
+
+    /* Focus visibility (keyboard accessibility) */
+    :focus { outline: none; }
+    :focus-visible {
+      outline: 2px solid var(--accent-blue);
+      outline-offset: 2px;
+    }
+    button:focus-visible,
+    input[type="text"]:focus-visible,
+    select:focus-visible,
+    .project-row:focus-visible {
+      outline: 2px solid var(--accent-blue);
+      outline-offset: 2px;
+    }
+
+    /* Reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; scroll-behavior: auto !important; }
+      button:hover { transform: none; }
+    }
+
+    button.action-btn {
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(15, 118, 110, 0.25);
+    }
+    button.action-btn:hover {
+      background: var(--accent-hover);
+      box-shadow: 0 3px 12px rgba(15, 118, 110, 0.3);
+    }
+
+    /* 3. Main Workspace Layout */
+    /* min-width: 0 on flex items fixes Safari (and some Chrome) first-paint overflow until resize */
+    #main-content {
+      display: flex;
+      flex: 1 1 0;
+      min-width: 0;
+      min-height: 0;
+      padding-top: 14px;
+      box-sizing: border-box;
+    }
+
+    #left-pane {
+      flex: 1 1 0;
+      min-width: 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg-panel);
+      /* Keep header controls inside the pane so they are not painted under the splitter (next sibling). */
+      overflow-x: hidden;
+    }
+    #right-pane {
+      flex: 1 1 0;
+      min-width: 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg-base);
+    }
+
+    #splitter {
+      flex: 0 0 auto;
+      width: 10px;
+      cursor: col-resize;
+      background: linear-gradient(to right, transparent, rgba(255,255,255,0.05), transparent);
+      border-left: 1px solid var(--border-color);
+      border-right: 1px solid var(--border-color);
+      position: relative;
+      flex-shrink: 0;
+      touch-action: none;
+    }
+    #splitter::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 3px;
+      height: 44px;
+      transform: translate(-50%, -50%);
+      border-radius: 999px;
+      background: rgba(255,255,255,0.18);
+    }
+    #splitter:focus-visible {
+      outline: 2px solid var(--accent-blue);
+      outline-offset: -2px;
+    }
+
+    /* Editor toolbar: single row above Monaco (Browse left, Run right) */
+    .toolbar {
+      padding: 12px 18px;
+      background: transparent;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    /* Undo global style.css .toolbar { display:grid } for this bar */
+    .toolbar.pane-header {
+      display: flex;
+      grid-template-columns: unset;
+      grid-template-rows: unset;
+      flex-direction: row;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      padding: 14px 18px;
+      background: var(--bg-header);
+      border-top: none;
+      border-radius: 0;
+      border: none;
+      border-bottom: 1px solid var(--border-color);
+      min-width: 0;
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
+    }
+
+    .editor-toolbar-left {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    .editor-toolbar-title {
+      margin: 0;
+      font-size: 12px;
+      color: var(--text-main);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 800;
+      line-height: 1;
+      padding-left: 12px;
+      padding-right: 6px;
+      flex-shrink: 0;
+    }
+
+    .toolbar.pane-header #run-btn {
+      flex-shrink: 0;
+      padding: 12px 28px;
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: 0.03em;
+      border-radius: 10px;
+      margin-left: 8px;
+      box-shadow:
+        0 4px 16px rgba(15, 118, 110, 0.32),
+        0 1px 0 rgba(255, 255, 255, 0.2) inset;
+    }
+    .toolbar.pane-header #run-btn:hover {
+      box-shadow:
+        0 6px 22px rgba(15, 118, 110, 0.38),
+        0 1px 0 rgba(255, 255, 255, 0.25) inset;
+    }
+
+    #editor-js {
+      flex-grow: 1;
+      min-height: 0;
+      min-width: 0;
+      background: #fffdf9;
+    }
+    html.pg-theme-dark #editor-js {
+      background: #1e1e1e;
+    }
+    /* Slightly warmer editor surface; keeps VS theme readable on cream chrome */
+    #editor-js .monaco-editor .margin {
+      background-color: #faf7f2 !important;
+    }
+    html.pg-theme-dark #editor-js .monaco-editor .margin {
+      background-color: #1a1a1a !important;
+    }
+
+    /* Projects dropdown */
+    #projects-dropdown { position: relative; }
+    #projects-menu {
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 0;
+      width: 520px;
+      max-width: calc(100vw - 40px);
+      max-height: 360px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      background: rgba(255, 250, 240, 0.98);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      box-shadow:
+        0 18px 55px rgba(31, 41, 55, 0.22),
+        0 2px 0 rgba(255, 255, 255, 0.7) inset;
+      padding: 12px;
+      z-index: 20;
+    }
+    #projects-menu[hidden] { display: none; }
+    .projects-menu-inner {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      flex: 1;
+      gap: 10px;
+    }
+    .projects-menu-search {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 8px 11px;
+      font-size: 13px;
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
+      background: rgba(255, 255, 255, 0.85);
+      color: var(--text-main);
+    }
+    .projects-menu-search:focus {
+      outline: none;
+      border-color: rgba(15, 118, 110, 0.55);
+      box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12);
+    }
+    .projects-menu-search::placeholder {
+      color: var(--text-muted);
+    }
+    .projects-menu-list {
+      overflow-y: auto;
+      min-height: 0;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .projects-menu-empty {
+      padding: 8px 4px;
+    }
+    .project-row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      padding: 12px 12px;
+      border-radius: 12px;
+      cursor: pointer;
+      border: 1px solid transparent;
+      background: rgba(255, 255, 255, 0.55);
+    }
+    .project-row:hover {
+      background: rgba(15, 118, 110, 0.08);
+      border-color: rgba(15, 118, 110, 0.22);
+    }
+    .project-row:focus-visible {
+      border-color: rgba(15, 118, 110, 0.45);
+      box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.15);
+    }
+    .project-title { font-size: 13px; font-weight: 700; color: var(--text-main); }
+    .project-subtitle { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+    .project-meta { margin-left: auto; font-size: 12px; color: var(--text-muted); }
+
+    /* 4. NexusUI Canvas Area */
+    .pane-header {
+      padding: 10px 18px;
+      background: var(--bg-header);
+      border-bottom: 1px solid var(--border-color);
+      border-top: 1px solid var(--border-color);
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--text-main);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    #right-pane .pane-header:first-child {
+      border-top: none;
+      padding-top: 12px;
+    }
+
+    #nexus-ui-container {
+      flex-grow: 1;
+      min-height: 300px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(circle at center, rgba(15, 118, 110, 0.07) 0%, var(--bg-base) 70%);
+      overflow-y: auto;
+      position: relative;
+      color: var(--text-main);
+    }
+    html.pg-theme-dark #nexus-ui-container {
+      background: radial-gradient(circle at center, rgba(45, 212, 191, 0.08) 0%, var(--bg-base) 72%);
+    }
+
+    .empty-state {
+      position: absolute;
+      inset: 18px;
+      display: grid;
+      place-items: center;
+      pointer-events: none;
+    }
+
+    .empty-card {
+      pointer-events: none;
+      position: relative;
+      max-width: min(680px, 100%);
+      width: 100%;
+      border: 1px solid rgba(167, 151, 113, 0.24);
+      border-radius: 24px;
+      background:
+        radial-gradient(circle at top, rgba(255, 255, 255, 0.7), transparent 58%),
+        linear-gradient(180deg, rgba(255, 252, 245, 0.96), rgba(249, 243, 232, 0.92));
+      box-shadow:
+        0 18px 40px rgba(44, 62, 80, 0.08),
+        inset 0 1px 0 rgba(255, 255, 255, 0.85);
+      padding: 24px 24px 22px;
+      text-align: center;
+      overflow: hidden;
+    }
+
+    .empty-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at 18% 20%, rgba(95, 201, 190, 0.14), transparent 28%),
+        radial-gradient(circle at 82% 78%, rgba(236, 201, 124, 0.12), transparent 24%);
+      pointer-events: none;
+    }
+
+    .empty-eyebrow {
+      position: relative;
+      z-index: 1;
+      margin-bottom: 8px;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #5aaea5;
+    }
+
+    .empty-title {
+      position: relative;
+      z-index: 1;
+      margin-bottom: 8px;
+      font-size: 28px;
+      line-height: 1.05;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      color: var(--text-main);
+    }
+
+    .empty-text {
+      position: relative;
+      z-index: 1;
+      max-width: 480px;
+      margin: 0 auto 16px;
+      font-size: 14px;
+      color: var(--text-muted);
+      line-height: 1.55;
+    }
+
+    .empty-actions {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 18px;
+      pointer-events: auto;
+    }
+
+    .empty-cta {
+      appearance: none;
+      border-radius: 999px;
+      padding: 10px 16px;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease, border-color 120ms ease;
+    }
+
+    .empty-cta:hover {
+      transform: translateY(-1px);
+    }
+
+    .empty-cta--primary {
+      border: 1px solid rgba(63, 175, 164, 0.92);
+      background: linear-gradient(180deg, #69d0c4, #4eb5aa);
+      color: #fffef9;
+      box-shadow: 0 10px 24px rgba(95, 201, 190, 0.22);
+    }
+
+    .empty-cta--ghost {
+      border: 1px solid rgba(167, 151, 113, 0.28);
+      background: rgba(255, 255, 255, 0.62);
+      color: var(--text-main);
+    }
+
+    .empty-workflows {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: 1.06fr 0.94fr;
+      gap: 14px;
+      margin: 0;
+      text-align: left;
+      align-items: stretch;
+    }
+
+    @media (max-width: 640px) {
+      .empty-card {
+        padding: 20px 16px 16px;
+        border-radius: 18px;
+      }
+
+      .empty-title {
+        font-size: 22px;
+      }
+
+      .empty-actions {
+        flex-direction: column;
+      }
+
+      .empty-workflows {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .empty-workflow {
+      position: relative;
+      padding: 16px;
+      border-radius: 18px;
+      border: 1px solid rgba(31, 41, 55, 0.12);
+      background: rgba(255, 255, 255, 0.58);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+    }
+
+    .empty-workflow--default {
+      border-color: rgba(95, 201, 190, 0.34);
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(243, 251, 249, 0.92));
+      box-shadow:
+        0 10px 24px rgba(95, 201, 190, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    }
+
+    .empty-workflow-badge {
+      display: inline-flex;
+      margin-bottom: 10px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: rgba(95, 201, 190, 0.14);
+      color: #317d75;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .empty-workflow-head {
+      font-weight: 800;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-main);
+      margin: 0 0 8px 0;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .empty-workflow-head--default {
+      font-size: 12px;
+    }
+
+    .empty-workflow-icon {
+      font-size: 15px;
+      line-height: 1;
+      opacity: 0.95;
+    }
+
+    .empty-workflow-tagline {
+      font-size: 12.5px;
+      color: var(--text-muted);
+      line-height: 1.5;
+      margin: 0 0 10px 0;
+      font-weight: 500;
+    }
+
+    .empty-workflow-steps {
+      margin: 0;
+      padding-left: 1.15rem;
+      font-size: 12.5px;
+      color: var(--text-muted);
+      line-height: 1.55;
+    }
+
+    .empty-workflow-steps li {
+      margin-bottom: 4px;
+    }
+
+    .empty-workflow-steps li:last-child {
+      margin-bottom: 0;
+    }
+
+    .empty-workflow-steps .wf-action {
+      color: var(--text-main);
+      font-weight: 700;
+    }
+
+    /* Keep empty state readable when canvas height is limited (laptops). */
+    @media (max-height: 900px) {
+      .empty-state {
+        inset: 10px;
+        place-items: stretch;
+        pointer-events: auto;
+      }
+
+      .empty-card {
+        pointer-events: auto;
+        max-height: 100%;
+        overflow-y: auto;
+        margin: 0 auto;
+        border-radius: 16px;
+        padding: 14px 14px 12px;
+      }
+
+      .empty-eyebrow {
+        margin-bottom: 6px;
+      }
+
+      .empty-text {
+        margin-bottom: 10px;
+        font-size: 13px;
+        line-height: 1.45;
+      }
+
+      .empty-actions {
+        margin-bottom: 10px;
+        gap: 8px;
+      }
+
+      .empty-cta {
+        padding: 8px 12px;
+        font-size: 12px;
+      }
+
+      .empty-workflows {
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+
+      .empty-workflow {
+        padding: 12px;
+        border-radius: 14px;
+      }
+
+      .empty-workflow-tagline,
+      .empty-workflow-steps {
+        font-size: 12px;
+      }
+    }
+
+    html.pg-theme-dark .empty-card {
+      background:
+        radial-gradient(circle at top, rgba(255, 255, 255, 0.05), transparent 58%),
+        linear-gradient(180deg, rgba(16, 23, 34, 0.94), rgba(12, 18, 28, 0.98));
+      border-color: rgba(95, 201, 190, 0.16);
+      box-shadow: 0 20px 44px rgba(0, 0, 0, 0.28);
+    }
+
+    html.pg-theme-dark .empty-workflow {
+      background: rgba(255, 255, 255, 0.04);
+      border-color: rgba(148, 163, 184, 0.14);
+      box-shadow: none;
+    }
+
+    html.pg-theme-dark .empty-workflow--default {
+      background: rgba(95, 201, 190, 0.08);
+      border-color: rgba(95, 201, 190, 0.22);
+    }
+
+    html.pg-theme-dark .empty-workflow-badge {
+      background: rgba(95, 201, 190, 0.14);
+      color: #8ae0d7;
+    }
+
+    html.pg-theme-dark .empty-cta--ghost {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(148, 163, 184, 0.18);
+      color: var(--text-main);
+    }
+
+    /* Samples modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: rgba(17, 24, 39, 0.35);
+      z-index: 50;
+    }
+    /* Beat bundled style.css .modal-overlay / .modal (different palette + z-index) */
+    html body #samples-modal.modal-overlay {
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      background: rgba(17, 24, 39, 0.28);
+      z-index: 1250;
+    }
+    html.pg-theme-dark body #samples-modal.modal-overlay {
+      background: rgba(0, 0, 0, 0.5);
+    }
+    html body #samples-modal .modal {
+      width: min(720px, 100%);
+      max-height: min(80vh, 900px);
+      overflow: auto;
+      background: rgba(255, 250, 240, 0.98);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      box-shadow:
+        0 18px 55px rgba(31, 41, 55, 0.22),
+        0 2px 0 rgba(255, 255, 255, 0.7) inset;
+      padding: 16px 16px;
+      color: var(--text-main);
+    }
+    html.pg-theme-dark body #samples-modal .modal {
+      background: rgba(30, 41, 55, 0.98);
+      box-shadow:
+        0 18px 55px rgba(0, 0, 0, 0.4),
+        0 2px 0 rgba(255, 255, 255, 0.04) inset;
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border-color);
+      margin-bottom: 12px;
+    }
+    .modal-header h3 { margin: 0; font-size: 14px; }
+    .modal-subtitle { margin: 0 0 12px 0; color: var(--text-muted); font-size: 13px; }
+    .samples-list { display: grid; gap: 10px; }
+    .sample-btn {
+      text-align: left;
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+      background: rgba(255, 255, 255, 0.82);
+      color: var(--text-main);
+      cursor: pointer;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .sample-btn:hover {
+      background: rgba(255, 255, 255, 0.95);
+      border-color: rgba(15, 118, 110, 0.28);
+    }
+    .sample-btn.is-selected {
+      background: rgba(15, 118, 110, 0.12);
+      border-color: rgba(15, 118, 110, 0.45);
+      box-shadow: 0 0 0 2px rgba(15, 118, 110, 0.14);
+    }
+    html.pg-theme-dark .sample-btn {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: var(--border-color);
+    }
+    html.pg-theme-dark .sample-btn:hover {
+      background: rgba(45, 212, 191, 0.1);
+      border-color: rgba(45, 212, 191, 0.28);
+    }
+    html.pg-theme-dark .sample-btn.is-selected {
+      background: rgba(45, 212, 191, 0.16);
+      border-color: rgba(45, 212, 191, 0.5);
+      box-shadow: 0 0 0 2px rgba(45, 212, 191, 0.14);
+    }
+    .sample-pill {
+      font-size: 11px;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: rgba(15, 118, 110, 0.1);
+      border: 1px solid rgba(15, 118, 110, 0.22);
+      color: var(--text-main);
+      white-space: nowrap;
+    }
+    html.pg-theme-dark .sample-pill {
+      background: rgba(45, 212, 191, 0.12);
+      border-color: rgba(45, 212, 191, 0.28);
+    }
+    .sample-meta { color: var(--text-muted); font-size: 12px; }
+    .samples-section-heading {
+      margin: 16px 0 6px 0;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-main);
+    }
+    .samples-section-heading:first-of-type { margin-top: 0; }
+    .samples-section-note {
+      margin: 0 0 10px 0;
+      font-size: 12px;
+      line-height: 1.45;
+      color: var(--text-muted);
+    }
+    .sample-pill--template {
+      background: rgba(120, 53, 15, 0.08);
+      border: 1px dashed rgba(120, 53, 15, 0.35);
+      color: #92400e;
+      font-weight: 800;
+    }
+    html.pg-theme-dark .sample-pill--template {
+      background: rgba(251, 191, 36, 0.12);
+      border-color: rgba(251, 191, 36, 0.38);
+      color: #fcd34d;
+    }
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.92);
+      color: var(--text-main);
+      border: 1px solid rgba(31, 41, 55, 0.22);
+    }
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 1);
+      border-color: rgba(31, 41, 55, 0.30);
+    }
+    html.pg-theme-dark .btn-secondary {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+    }
+    html.pg-theme-dark .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: rgba(45, 212, 191, 0.28);
+    }
+    #take-tour-btn {
+      background: linear-gradient(180deg, rgba(15, 118, 110, 0.18), rgba(15, 118, 110, 0.11));
+      color: #0e5a55;
+      border: 1px solid rgba(15, 118, 110, 0.4);
+      font-weight: 700;
+      border-radius: 999px;
+      padding-left: 12px;
+      padding-right: 12px;
+      box-shadow:
+        0 1px 0 rgba(255, 255, 255, 0.75) inset,
+        0 4px 10px rgba(15, 118, 110, 0.12);
+    }
+    #take-tour-btn:hover {
+      background: linear-gradient(180deg, rgba(15, 118, 110, 0.24), rgba(15, 118, 110, 0.15));
+      border-color: rgba(15, 118, 110, 0.5);
+      color: #0b4f4a;
+    }
+    #take-tour-btn::before {
+      content: "✦";
+      margin-right: 7px;
+      color: rgba(15, 118, 110, 0.95);
+      font-size: 0.95em;
+      line-height: 1;
+    }
+    html.pg-theme-dark #take-tour-btn {
+      background: linear-gradient(180deg, rgba(45, 212, 191, 0.2), rgba(45, 212, 191, 0.12));
+      color: #dffdfa;
+      border-color: rgba(45, 212, 191, 0.4);
+      box-shadow: 0 4px 12px rgba(45, 212, 191, 0.12);
+    }
+    html.pg-theme-dark #take-tour-btn:hover {
+      background: linear-gradient(180deg, rgba(45, 212, 191, 0.26), rgba(45, 212, 191, 0.16));
+      border-color: rgba(45, 212, 191, 0.5);
+    }
+
+    /* Modal close (samples): stronger contrast on cream panel */
+    #close-samples-btn {
+      background: rgba(255, 255, 255, 0.98);
+      color: #111827;
+      border: 1px solid rgba(15, 118, 110, 0.42);
+      font-weight: 700;
+      font-size: 16px;
+      line-height: 1;
+      padding: 6px 12px;
+      min-width: 2.25rem;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(31, 41, 55, 0.1);
+    }
+    #close-samples-btn:hover {
+      background: var(--accent-soft);
+      color: #0f766e;
+      border-color: rgba(15, 118, 110, 0.55);
+    }
+    html.pg-theme-dark #close-samples-btn {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      box-shadow: none;
+    }
+    html.pg-theme-dark #close-samples-btn:hover {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: rgba(45, 212, 191, 0.28);
+      color: var(--accent-hover);
+    }
+    .samples-modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border-color);
+    }
+    #import-sample-btn:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      box-shadow: none;
+      transform: none;
+    }
+
+    /* Browse = secondary (outline) so Run / Connect Project stay the clear primary */
+    #browse-samples-btn {
+      background: rgba(255, 255, 255, 0.95) !important;
+      color: #115e59 !important;
+      border: 1px solid rgba(15, 118, 110, 0.38) !important;
+      box-shadow: none !important;
+    }
+    #browse-samples-btn:hover {
+      background: var(--accent-soft) !important;
+      color: #134e4a !important;
+      border-color: rgba(15, 118, 110, 0.5) !important;
+    }
+    html.pg-theme-dark #browse-samples-btn {
+      background: rgba(255, 255, 255, 0.08) !important;
+      color: var(--accent) !important;
+      border-color: rgba(45, 212, 191, 0.35) !important;
+    }
+    html.pg-theme-dark #browse-samples-btn:hover {
+      background: var(--accent-soft) !important;
+      color: var(--accent-hover) !important;
+      border-color: rgba(45, 212, 191, 0.5) !important;
+    }
+
+    /* Frosted overlay (create project) */
+    #create-project-modal.modal-overlay {
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      background: rgba(17, 24, 39, 0.28);
+      z-index: 55;
+    }
+    .modal.create-project-modal {
+      width: min(520px, calc(100vw - 48px));
+      max-width: 100%;
+      padding: 12px;
+      background: rgba(255, 250, 240, 0.98);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      box-shadow:
+        0 18px 55px rgba(31, 41, 55, 0.22),
+        0 2px 0 rgba(255, 255, 255, 0.7) inset;
+      color: var(--text-main);
+    }
+    .create-project-modal .modal-header {
+      border-bottom: 1px solid var(--border-color);
+      margin-bottom: 10px;
+      padding-bottom: 10px;
+    }
+    .create-project-modal .modal-header h3 {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+    .create-project-modal .create-project-close {
+      background: rgba(255, 255, 255, 0.85);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      padding: 6px 10px;
+      border-radius: 8px;
+      font-weight: 600;
+      min-width: auto;
+    }
+    .create-project-modal .create-project-close:hover {
+      background: rgba(255, 255, 255, 0.95);
+      border-color: rgba(31, 41, 55, 0.22);
+    }
+    .create-project-field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .create-project-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+    /* Match .projects-menu-search */
+    #create-project-name-input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 8px 11px;
+      font-size: 13px;
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
+      background: rgba(255, 255, 255, 0.85);
+      color: var(--text-main);
+    }
+    #create-project-name-input::placeholder {
+      color: var(--text-muted);
+    }
+    #create-project-name-input:focus {
+      outline: none;
+      border-color: rgba(15, 118, 110, 0.55);
+      box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12);
+    }
+    #create-project-name-input:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+    }
+    .create-project-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 12px;
+      flex-wrap: wrap;
+    }
+    .create-project-actions button {
+      min-width: 100px;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 13px;
+    }
+    #create-project-cancel-btn {
+      background: rgba(255, 255, 255, 0.85);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+    }
+    #create-project-cancel-btn:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.95);
+      border-color: rgba(31, 41, 55, 0.22);
+    }
+    /* Match primary actions (teal) */
+    #create-project-submit-btn {
+      background: linear-gradient(180deg, #14b8a6, #0f766e);
+      color: #fff;
+      border: 1px solid rgba(15, 118, 110, 0.45);
+    }
+    #create-project-submit-btn:hover:not(:disabled) {
+      background: linear-gradient(180deg, #2dd4bf, #115e59);
+    }
+    #create-project-submit-btn:disabled,
+    #create-project-cancel-btn:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    html.pg-theme-dark #projects-menu {
+      background: rgba(30, 41, 55, 0.98);
+      box-shadow: 0 18px 55px rgba(0, 0, 0, 0.45);
+    }
+    html.pg-theme-dark .project-row {
+      background: rgba(255, 255, 255, 0.06);
+    }
+    html.pg-theme-dark .project-row:hover {
+      background: rgba(45, 212, 191, 0.12);
+      border-color: rgba(45, 212, 191, 0.25);
+    }
+    html.pg-theme-dark .projects-menu-search {
+      background: rgba(15, 23, 42, 0.65);
+    }
+    html.pg-theme-dark .empty-card {
+      background: rgba(255, 255, 255, 0.04);
+      border-color: rgba(255, 255, 255, 0.14);
+    }
+    html.pg-theme-dark .modal.create-project-modal {
+      background: rgba(30, 41, 55, 0.98);
+      box-shadow: 0 18px 55px rgba(0, 0, 0, 0.4), 0 2px 0 rgba(255, 255, 255, 0.04) inset;
+    }
+
+    /* 5. Terminal — body#… beats bundled style.css #console-output (which used dark-theme --text) */
+    body #console-output {
+      height: clamp(140px, 24vh, 220px);
+      box-sizing: border-box;
+      background: #f0ebe3;
+      color: var(--text-main);
+      padding: 12px 15px;
+      overflow-y: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 14px;
+      line-height: 1.55;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.7), inset 0 2px 8px rgba(31,41,55,0.06);
+      border-top: 1px solid var(--border-color);
+      border: 1px solid rgba(31, 41, 55, 0.12);
+      border-radius: 0;
+      margin: 0;
+    }
+    @media (max-height: 820px) {
+      #nexus-ui-container {
+        min-height: 340px;
+      }
+      body #console-output {
+        height: clamp(120px, 20vh, 170px);
+      }
+    }
+    html.pg-theme-dark body #console-output {
+      background: #0d1218;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+      border-color: var(--border-color);
+    }
+  </style>
+  <script type="module" crossorigin src="/JSplayground/assets/index-CDNED_xo.js"></script>
+  <link rel="stylesheet" crossorigin href="/JSplayground/assets/index-CO3ZWY6X.css">
+</head>
+<body>
+
+  <!-- TITLE HEADER -->
+  <header id="title-bar">
+    <h1 class="title" aria-label="JSPlayground">
+      <span class="title-js">JS</span><span class="title-rest">Playground</span>
+    </h1>
+    <div id="title-bar-appearance" class="title-bar-actions">
+      <button
+        type="button"
+        id="appearance-menu-btn"
+        class="appearance-menu-trigger"
+        aria-label="Appearance settings"
+        aria-haspopup="true"
+        aria-expanded="false"
+        aria-controls="appearance-menu-panel"
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+          <circle cx="12" cy="12" r="3" />
+        </svg>
+      </button>
+      <div
+        id="appearance-menu-panel"
+        class="appearance-menu-panel"
+        role="group"
+        aria-label="Appearance"
+        hidden
+      >
+        <div class="appearance-menu-field">
+          <span class="appearance-menu-label" id="appearance-label-theme">Theme</span>
+          <div class="appearance-segment" role="radiogroup" aria-labelledby="appearance-label-theme">
+            <button type="button" id="appearance-theme-light" role="radio" aria-checked="true" aria-pressed="true">Light</button>
+            <button type="button" id="appearance-theme-dark" role="radio" aria-checked="false" aria-pressed="false">Dark</button>
           </div>
         </div>
-      </header>
-
-      <header class="toolbar">
-        <section class="control-card">
-          <h2>Audiotool connection</h2>
-          <details class="audiotool-dev-details">
-            <summary>Client ID &amp; Redirect URL</summary>
-            <p class="subtle">
-              Client ID:
-              <code>379f8d67-b211-43b2-8a9d-9553aa8aad32</code>
-            </p>
-            <p class="subtle">
-              Redirect URL:
-              <code id="redirect-url"></code>
-            </p>
-          </details>
-
-          <label for="project-input">Project URL or UUID</label>
-          <input
-            id="project-input"
-            name="project-input"
-            type="text"
-            placeholder="https://beta.audiotool.com/studio?project=<project-id>"
-          />
-          <div class="buttons">
-            <button id="auth-btn" type="button">Login</button>
-            <button id="list-projects-btn" type="button" class="btn-secondary">
-              <svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              <span>List Projects</span>
-            </button>
-            <button id="create-project-btn" type="button" class="btn-secondary">
-              <svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              <span>Create Project</span>
-            </button>
-            <button id="connect-btn" type="button" class="btn-primary" disabled>
-              Connect Project
-            </button>
-            <button id="disconnect-btn" type="button" class="btn-secondary" disabled>
-              <svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M18 8a6 6 0 10-8.48 8.48" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 3v5h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              <span>Disconnect</span>
-            </button>
-            <button id="open-project-btn" type="button" class="btn-secondary" disabled>
-              <svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M14 3h7v7M21 3L10 14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              <span>Open Project Tab</span>
-            </button>
-          </div>
-          <p id="audiotool-status" class="status-line">Auth not initialized.</p>
-        </section>
-        <div class="toolbar-appearance">
-          <button
-            type="button"
-            id="appearance-btn"
-            class="appearance-btn"
-            title="Change appearance (theme & accent)"
-            aria-label="Appearance"
-            aria-haspopup="true"
-            aria-expanded="false"
-          >
-            <svg class="appearance-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <circle cx="12" cy="12" r="3"/>
-              <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
-            </svg>
-            <span class="appearance-label">Appearance</span>
-          </button>
-          <div id="appearance-dropdown" class="appearance-dropdown" role="dialog" aria-label="Appearance options" hidden>
-            <div class="appearance-dropdown-inner">
-              <p class="appearance-dropdown-title">Theme</p>
-              <div class="appearance-options" id="appearance-theme-options">
-                <button
-                  type="button"
-                  class="appearance-option active"
-                  data-appearance="theme"
-                  data-value="light"
-                >
-                  Light
-                </button>
-                <button
-                  type="button"
-                  class="appearance-option"
-                  data-appearance="theme"
-                  data-value="dark"
-                >
-                  Dark
-                </button>
-                <button
-                  type="button"
-                  class="appearance-option"
-                  data-appearance="theme"
-                  data-value="solarized"
-                >
-                  Solarized
-                </button>
-                <button
-                  type="button"
-                  class="appearance-option"
-                  data-appearance="theme"
-                  data-value="high-contrast"
-                >
-                  High contrast
-                </button>
-              </div>
-              <p class="appearance-dropdown-title">Accent</p>
-              <div class="appearance-options" id="appearance-accent-options">
-                <button
-                  type="button"
-                  class="appearance-option active"
-                  data-appearance="accent"
-                  data-value="default"
-                >
-                  Default
-                </button>
-                <button
-                  type="button"
-                  class="appearance-option"
-                  data-appearance="accent"
-                  data-value="muted-purple"
-                >
-                  Purple
-                </button>
-                <button
-                  type="button"
-                  class="appearance-option"
-                  data-appearance="accent"
-                  data-value="indigo"
-                >
-                  Indigo
-                </button>
-                <button
-                  type="button"
-                  class="appearance-option"
-                  data-appearance="accent"
-                  data-value="emerald"
-                >
-                  Emerald
-                </button>
-              </div>
-              <p class="appearance-dropdown-title">Editor text size</p>
-              <div class="appearance-options" id="appearance-editor-font-size-options">
-                <button
-                  type="button"
-                  class="appearance-option"
-                  data-appearance="editor-font-size"
-                  data-value="small"
-                >
-                  Small
-                </button>
-                <button
-                  type="button"
-                  class="appearance-option active"
-                  data-appearance="editor-font-size"
-                  data-value="medium"
-                >
-                  Medium
-                </button>
-                <button
-                  type="button"
-                  class="appearance-option"
-                  data-appearance="editor-font-size"
-                  data-value="large"
-                >
-                  Large
-                </button>
-              </div>
-              <p class="appearance-dropdown-title">Interface size</p>
-              <div class="appearance-options" id="appearance-ui-font-size-options">
-                <button
-                  type="button"
-                  class="appearance-option"
-                  data-appearance="ui-font-size"
-                  data-value="small"
-                >
-                  Small
-                </button>
-                <button
-                  type="button"
-                  class="appearance-option active"
-                  data-appearance="ui-font-size"
-                  data-value="medium"
-                >
-                  Medium
-                </button>
-                <button
-                  type="button"
-                  class="appearance-option"
-                  data-appearance="ui-font-size"
-                  data-value="large"
-                >
-                  Large
-                </button>
-              </div>
-            </div>
+        <div class="appearance-menu-field">
+          <span class="appearance-menu-label" id="appearance-label-density">UI density</span>
+          <div class="appearance-segment" role="radiogroup" aria-labelledby="appearance-label-density">
+            <button type="button" id="appearance-density-comfortable" role="radio" aria-checked="true" aria-pressed="true">Comfortable</button>
+            <button type="button" id="appearance-density-compact" role="radio" aria-checked="false" aria-pressed="false">Compact</button>
           </div>
         </div>
-      </header>
-
-      <main class="panes">
-        <section class="pane editor-pane">
-          <h2>Editor</h2>
-          <div class="editor-workbench">
-            <div class="editor-tab-bar">
-              <div class="editor-tab-inline-group">
-                <div class="editor-tab-buttons" role="tablist" aria-label="Editor source">
-                  <button
-                    type="button"
-                    class="editor-tab"
-                    role="tab"
-                    id="tab-html"
-                    aria-selected="false"
-                    aria-controls="editor-html"
-                    data-editor-tab="html"
-                  >
-                    HTML
-                  </button>
-                  <button
-                    type="button"
-                    class="editor-tab"
-                    role="tab"
-                    id="tab-css"
-                    aria-selected="false"
-                    aria-controls="editor-css"
-                    data-editor-tab="css"
-                  >
-                    CSS
-                  </button>
-                  <button
-                    type="button"
-                    class="editor-tab active"
-                    role="tab"
-                    id="tab-js"
-                    aria-selected="true"
-                    aria-controls="editor-js"
-                    data-editor-tab="js"
-                  >
-                    JavaScript
-                  </button>
-                </div>
-                <button
-                  id="sdk-view-toggle"
-                  type="button"
-                  class="editor-tab sdk-view-toggle"
-                  aria-pressed="false"
-                  aria-label="Show SDK simulation instead of live preview"
-                  title="SDK simulation (Tone Matrix &amp; apply output)"
-                >
-                  SDK
-                </button>
-                <button
-                  id="note-editor-open"
-                  type="button"
-                  class="editor-tab note-editor-open-btn"
-                  aria-label="Load note editor sample"
-                  title="Load the piano-roll note editor into HTML, CSS, and JavaScript"
-                >
-                  Note editor
-                </button>
-              </div>
-            </div>
-            <div class="editor-tab-panels">
-              <div
-                id="editor-html"
-                class="editor-panel"
-                role="tabpanel"
-                aria-labelledby="tab-html"
-                hidden
-              ></div>
-              <div
-                id="editor-css"
-                class="editor-panel"
-                role="tabpanel"
-                aria-labelledby="tab-css"
-                hidden
-              ></div>
-              <div
-                id="editor-js"
-                class="editor-panel active"
-                role="tabpanel"
-                aria-labelledby="tab-js"
-              ></div>
-            </div>
+        <div class="appearance-menu-field">
+          <label class="appearance-menu-label" for="appearance-font-range">Editor font size</label>
+          <div class="appearance-font-row">
+            <input type="range" id="appearance-font-range" min="12" max="18" step="1" value="14" />
+            <span class="appearance-font-value" id="appearance-font-value" aria-live="polite">14px</span>
           </div>
+        </div>
+      </div>
+    </div>
+  </header>
 
-          <section class="control-card controls-under-editor">
-            <h2>Playground controls</h2>
-            <label for="packages">Packages (comma-separated)</label>
-            <input
-              id="packages"
-              name="packages"
-              type="text"
-              value="dayjs,lodash-es"
-              placeholder="dayjs,lodash-es,@scope/pkg@1.2.3"
-            />
-            <div class="buttons">
-              <button id="run-btn" type="button">Run</button>
-              <button id="reset-btn" type="button">Reset</button>
-              <button id="samples-btn" type="button" class="btn-secondary">
-                Samples
-              </button>
-            </div>
-          </section>
-        </section>
-
-        <div id="splitter" class="splitter" role="separator" aria-orientation="vertical" tabindex="0" aria-label="Resize editor and preview"></div>
-
-        <section id="preview-pane" class="pane preview-pane preview-pane--live" data-preview-surface="live">
-          <h2>Application preview</h2>
-          <p id="preview-surface-indicator" class="preview-surface-indicator" role="status" aria-live="polite">
-            Live preview · HTML, CSS, and JavaScript
+  <!-- TOP BAR: Project & account -->
+  <div id="top-bar">
+    <div class="header-groups">
+      <section class="toolbar-group toolbar-group-wide" aria-label="Project">
+        <div class="toolbar-label">Project</div>
+        <div class="toolbar-row">
+          <button id="auth-btn" type="button">Login</button>
+          <div id="projects-dropdown">
+            <button id="list-projects-btn" type="button" aria-haspopup="menu" aria-expanded="false">List Projects</button>
+            <div id="projects-menu" role="menu" aria-label="Projects" hidden></div>
+          </div>
+          <button id="create-project-btn" type="button" aria-label="Create new cloud project on your account">New project</button>
+          <input type="text" id="project-input" inputmode="text" autocomplete="off" aria-label="Studio URL or project ID" placeholder="https://beta.audiotool.com/studio?project=<project-id>">
+          <button id="connect-btn" type="button">Connect Project</button>
+          <button id="open-project-btn" type="button" disabled>Open Project</button>
+          <button id="take-tour-btn" type="button" class="btn-secondary">Take tour</button>
+        </div>
+        <div class="playground-status-bar">
+          <span id="playground-status" role="status" aria-live="polite">Offline mode · run without logging in; log in for cloud</span>
+          <p id="playground-cloud-hint" class="playground-cloud-hint" hidden>
+            To sync with Audiotool Studio: paste a project URL or ID, or use <strong>List Projects</strong> / <strong>New project</strong>, then <strong>Connect Project</strong>. Run your code, then <strong>Open Project</strong>.
           </p>
-
-          <div id="preview-live-stack" class="preview-stack preview-stack--live">
-            <p class="subtle preview-hint preview-hint-live">
-              <strong>Live preview</strong> — HTML, CSS, and JavaScript from the editor run together in a sandboxed
-              iframe. Console output appears in the Console section below.
-            </p>
-            <div class="preview-live-wrap">
-              <iframe
-                id="preview-frame"
-                class="preview-frame"
-                title="Live preview"
-                sandbox="allow-scripts allow-same-origin allow-forms allow-modals"
-              ></iframe>
-            </div>
-          </div>
-
-          <div id="preview-sdk-stack" class="preview-stack preview-stack--sdk">
-            <h3 class="preview-subheading">Audiotool simulation</h3>
-            <p class="subtle preview-hint">
-              Visualizes SDK actions from your code (e.g. Tone Matrix). The full Audiotool Studio opens in a separate tab.
-            </p>
-            <div class="buttons preview-buttons">
-              <button id="reload-preview-btn" type="button" disabled>
-                Refresh Data
-              </button>
-            </div>
-            <p id="preview-mode-label" class="subtle preview-mode-label">
-              Session mode: waiting for project connection.
-            </p>
-            <div id="preview-panel" class="preview-panel" role="region" aria-label="SDK simulation"></div>
-          </div>
-        </section>
-      </main>
-
-      <details class="console-section" id="session-info-details">
-        <summary>Session Info</summary>
-        <div style="display: grid; gap: 10px; margin-top: 8px;">
-          <section class="session-grid">
-            <article class="control-card">
-              <h2>Project session</h2>
-              <dl id="session-project-meta" class="session-meta-list"></dl>
-            </article>
-            <article class="control-card">
-              <h2>Entity summary</h2>
-              <p id="session-entity-summary" class="subtle"></p>
-              <ul id="session-entity-counts" class="session-list"></ul>
-            </article>
-            <article class="control-card">
-              <h2>Alias registry</h2>
-              <ul id="session-alias-summary" class="session-list"></ul>
-            </article>
-            <article class="control-card">
-              <h2>Last apply</h2>
-              <p id="session-last-apply" class="subtle"></p>
-            </article>
-          </section>
-
-          <section class="control-card">
-            <h2>Action log</h2>
-            <ul id="session-activity-log" class="session-list activity-list"></ul>
-          </section>
         </div>
-      </details>
+      </section>
 
-      <details class="console-section">
-        <summary>Console</summary>
-        <pre id="console-output"></pre>
-      </details>
+      <!-- Execute controls live with the editor header -->
+    </div>
+  </div>
 
+  <div id="main-content">
+    <!-- LEFT SIDE: The Code Editor -->
+    <div id="left-pane">
+      <div class="toolbar pane-header" role="toolbar" aria-label="JavaScript editor">
+        <div class="editor-toolbar-left">
+          <h3 class="editor-toolbar-title">JavaScript Editor</h3>
+          <button id="browse-samples-btn" type="button" class="btn-secondary">Samples</button>
+        </div>
+        <button id="run-btn" type="button" class="action-btn">Run Code ▷</button>
+      </div>
+      <div id="editor-js" aria-label="Code editor"></div>
     </div>
 
-  </body>
+    <div id="splitter" role="separator" aria-orientation="vertical" tabindex="0" aria-label="Resize editor and preview"></div>
+
+    <!-- RIGHT SIDE: UI & Console -->
+    <div id="right-pane">
+      <div class="pane-header">Interactive UI Canvas</div>
+      <div id="nexus-ui-container">
+        <div id="preview-empty" class="empty-state">
+          <div class="empty-card" aria-hidden="true">
+            <div class="empty-eyebrow">Interactive canvas</div>
+            <div class="empty-text">
+              Run code to render controls here, or start with a sample and iterate from there.
+            </div>
+
+            <div class="empty-actions">
+              <button type="button" class="empty-cta empty-cta--primary" data-empty-action="samples">
+                Browse Samples
+              </button>
+              <button type="button" class="empty-cta empty-cta--ghost" data-empty-action="run">
+                Run Code
+              </button>
+            </div>
+            <div class="empty-workflows" role="note">
+              <div class="empty-workflow empty-workflow--default">
+                <div class="empty-workflow-head empty-workflow-head--default">
+                  <span class="empty-workflow-icon" aria-hidden="true">⚡</span>
+                  Offline mode
+                </div>
+                <p class="empty-workflow-tagline">
+                  Fastest path to a first result. No login required.
+                </p>
+                <ol class="empty-workflow-steps">
+                  <li><span class="wf-action">Browse Samples</span> or write code</li>
+                  <li><span class="wf-action">Run Code</span> to generate UI</li>
+                </ol>
+              </div>
+
+              <div class="empty-workflow empty-workflow--studio">
+                <div class="empty-workflow-head">
+                  <span class="empty-workflow-icon" aria-hidden="true">☁️</span>
+                  Studio mode
+                </div>
+                <p class="empty-workflow-tagline">
+                  Connect a cloud project, then sync and open it in Audiotool Studio.
+                </p>
+                <ol class="empty-workflow-steps">
+                  <li><span class="wf-action">Log in</span></li>
+                  <li>Select a project or paste a URL</li>
+                  <li><span class="wf-action">Connect Project</span></li>
+                  <li>Run code, then <span class="wf-action">Open Project</span></li>
+                </ol>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="pane-header">Terminal Output</div>
+      <div id="console-output" role="log" aria-live="polite" aria-relevant="additions"></div>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      const splitter = document.getElementById("splitter");
+      const left = document.getElementById("left-pane");
+      const right = document.getElementById("right-pane");
+      const container = document.getElementById("main-content");
+      if (!splitter || !left || !right || !container) return;
+
+      const MIN_PX = 280;
+
+      function setLeftWidth(px) {
+        const bounds = container.getBoundingClientRect();
+        const maxLeft = Math.max(MIN_PX, bounds.width - MIN_PX - splitter.offsetWidth);
+        const next = Math.min(Math.max(px, MIN_PX), maxLeft);
+        left.style.flex = "0 0 auto";
+        left.style.width = `${next}px`;
+        right.style.flex = "1 1 0";
+      }
+
+      function setSplitByRatio(ratio) {
+        const bounds = container.getBoundingClientRect();
+        setLeftWidth(bounds.width * ratio);
+      }
+
+      if (!left.style.width) setSplitByRatio(0.5);
+
+      let dragging = false;
+      let splitterPointerId = -1;
+
+      function onPointerMove(e) {
+        if (!dragging) return;
+        const bounds = container.getBoundingClientRect();
+        setLeftWidth(e.clientX - bounds.left);
+      }
+
+      function stopDrag() {
+        if (!dragging) return;
+        dragging = false;
+        document.body.style.cursor = "";
+        if (splitterPointerId >= 0) {
+          splitter.releasePointerCapture?.(splitterPointerId);
+          splitterPointerId = -1;
+        }
+        window.removeEventListener("pointermove", onPointerMove);
+        window.removeEventListener("pointerup", stopDrag);
+        window.removeEventListener("pointercancel", stopDrag);
+      }
+
+      splitter.addEventListener("pointerdown", (e) => {
+        if (e.button !== 0 && e.pointerType === "mouse") return;
+        dragging = true;
+        splitterPointerId = e.pointerId;
+        document.body.style.cursor = "col-resize";
+        splitter.setPointerCapture?.(e.pointerId);
+        window.addEventListener("pointermove", onPointerMove);
+        window.addEventListener("pointerup", stopDrag);
+        window.addEventListener("pointercancel", stopDrag);
+      });
+
+      splitter.addEventListener("keydown", (e) => {
+        const step = e.shiftKey ? 40 : 20;
+        if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+        e.preventDefault();
+        const current = left.getBoundingClientRect().width;
+        setLeftWidth(current + (e.key === "ArrowLeft" ? -step : step));
+      });
+
+      window.addEventListener("resize", () => {
+        const bounds = container.getBoundingClientRect();
+        const current = left.getBoundingClientRect().width;
+        const ratio = bounds.width ? current / bounds.width : 0.5;
+        setSplitByRatio(ratio);
+      });
+    })();
+  </script>
+
+  <script>
+    (() => {
+      const container = document.getElementById("nexus-ui-container");
+      const empty = document.getElementById("preview-empty");
+      if (!container || !empty) return;
+
+      function update() {
+        const hasRealChildren = Array.from(container.children).some(
+          (el) => el !== empty && el.nodeType === 1,
+        );
+        empty.style.display = hasRealChildren ? "none" : "grid";
+      }
+
+      update();
+      const obs = new MutationObserver(update);
+      obs.observe(container, { childList: true, subtree: false });
+    })();
+  </script>
+
+  <!-- SAMPLES MODAL -->
+  <div id="samples-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-label="Samples" aria-hidden="true" style="display: none;">
+    <div class="modal" role="document">
+      <div class="modal-header">
+        <h3>Samples</h3>
+        <button id="close-samples-btn" type="button" class="btn-secondary" aria-label="Close">✕</button>
+      </div>
+      <p class="modal-subtitle">Samples are grouped by mode so you can start with what works for your current setup.</p>
+      <div class="samples-list">
+        <div class="samples-section-heading">Offline (No Login Required)</div>
+        <button type="button" class="sample-btn load-sample-btn" data-sample="offlineSynthDelayPlayground">
+          <span class="sample-pill">Offline</span>
+          <div>
+            <div>Offline Synth + Delay Playground</div>
+            <div class="sample-meta">Create Heisenberg + Delay, then control gain/mix/feedback with Nexus dials.</div>
+          </div>
+        </button>
+        <button type="button" class="sample-btn load-sample-btn" data-sample="offlinePianoPresets">
+          <span class="sample-pill">Offline</span>
+          <div>
+            <div>Offline Piano + Presets</div>
+            <div class="sample-meta">Play a piano UI and switch Pluck/Pad/Lead/Ambient presets with buttons.</div>
+          </div>
+        </button>
+        <div class="samples-section-heading">Cloud / Studio (Login + Project Connection)</div>
+        <button type="button" class="sample-btn load-sample-btn" data-sample="starterChain">
+          <span class="sample-pill">Routing</span>
+          <div>
+            <div>Heisenberg → Delay (Audio Cable)</div>
+            <div class="sample-meta">Create two devices and connect audio.</div>
+          </div>
+        </button>
+        <button type="button" class="sample-btn load-sample-btn" data-sample="seqToDrums">
+          <span class="sample-pill">Notes</span>
+          <div>
+            <div>ToneMatrix → Machiniste (Note Cable)</div>
+            <div class="sample-meta">Wire a notes output into a drum sampler.</div>
+          </div>
+        </button>
+        <button type="button" class="sample-btn load-sample-btn" data-sample="nexusDialGain">
+          <span class="sample-pill">NexusUI</span>
+          <div>
+            <div>Dial controls Synth Gain</div>
+            <div class="sample-meta">Render UI and update a field in the engine.</div>
+          </div>
+        </button>
+        <button type="button" class="sample-btn load-sample-btn" data-sample="mixerMelody">
+          <span class="sample-pill">Audio</span>
+          <div>
+            <div>Heisenberg + mixer + melody</div>
+            <div class="sample-meta">Synth auto-patched to a strip + MIDI clip — press Play in Studio to hear it.</div>
+          </div>
+        </button>
+        <button type="button" class="sample-btn load-sample-btn" data-sample="abcVisualizer">
+          <span class="sample-pill">Notation</span>
+          <div>
+            <div>ABC visualizer + timeline import</div>
+            <div class="sample-meta">Render score in canvas and import notes to a synced cloud project.</div>
+          </div>
+        </button>
+        <div class="samples-section-heading">Templates</div>
+        <p class="samples-section-note">These replace the entire editor with a fresh starter script grouped by mode.</p>
+        <button type="button" class="sample-btn load-sample-btn" data-sample="templateOffline" data-kind="template">
+          <span class="sample-pill sample-pill--template">Template</span>
+          <div>
+            <div>Offline UI (NexusUI)</div>
+            <div class="sample-meta">Draw controls with NexusUI and update the local engine.</div>
+          </div>
+        </button>
+        <button type="button" class="sample-btn load-sample-btn" data-sample="templateCheatsheet" data-kind="template">
+          <span class="sample-pill sample-pill--template">Template</span>
+          <div>
+            <div>SDK cheat sheet</div>
+            <div class="sample-meta">Vocabulary + how to discover fields and knobs.</div>
+          </div>
+        </button>
+        <button type="button" class="sample-btn load-sample-btn" data-sample="templateOnline" data-kind="template">
+          <span class="sample-pill sample-pill--template">Template</span>
+          <div>
+            <div>Cloud routing (real Studio)</div>
+            <div class="sample-meta">Spawn devices + cables; best when connected to a project.</div>
+          </div>
+        </button>
+      </div>
+      <div class="samples-modal-actions">
+        <button id="import-sample-btn" type="button" class="action-btn" disabled>Import to Editor</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CREATE PROJECT MODAL -->
+  <div id="create-project-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="create-project-title" aria-hidden="true" style="display: none;">
+    <div class="modal create-project-modal" role="document">
+      <div class="modal-header">
+        <h3 id="create-project-title">Create New Project</h3>
+        <button id="close-create-project-btn" type="button" class="create-project-close" aria-label="Close">✕</button>
+      </div>
+      <form id="create-project-form" novalidate>
+        <div class="create-project-field">
+          <label for="create-project-name-input" class="create-project-label">Project name</label>
+          <input type="text" id="create-project-name-input" name="projectName" autocomplete="off" spellcheck="false" placeholder="e.g. My new beat" />
+        </div>
+        <div class="create-project-actions">
+          <button type="button" id="create-project-cancel-btn" class="btn-secondary">Cancel</button>
+          <button type="submit" id="create-project-submit-btn">Create &amp; connect</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+</body>
 </html>
