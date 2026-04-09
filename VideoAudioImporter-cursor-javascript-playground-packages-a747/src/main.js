@@ -68,33 +68,73 @@ const authBtn = document.getElementById("auth-btn");
 const connectBtn = document.getElementById("connect-btn");
 const projectInput = document.getElementById("project-input");
 const playgroundStatus = document.getElementById("playground-status");
+const playgroundStatusText = document.getElementById("playground-status-text");
+const playgroundModeBadge = document.getElementById("playground-mode-badge");
+const playgroundSteps = Array.from(
+  document.querySelectorAll("#playground-steps .playground-step"),
+);
 const playgroundCloudHint = document.getElementById("playground-cloud-hint");
 const openProjectBtn = document.getElementById("open-project-btn");
+const toastStack = document.getElementById("toast-stack");
 
 syncCloudToolbarEnabled();
 
+function setActiveSteps(keys) {
+  const active = new Set(keys);
+  for (const item of playgroundSteps) {
+    const key = item.dataset.step;
+    item.classList.toggle("is-active", active.has(key));
+  }
+}
+
+function setModeBadge(label, modeClass) {
+  if (!playgroundModeBadge) return;
+  playgroundModeBadge.textContent = label;
+  playgroundModeBadge.className = `status-mode-badge ${modeClass}`;
+}
+
+function showToast(message, variant = "default") {
+  if (!toastStack || !message) return;
+  const toast = document.createElement("div");
+  toast.className = `toast toast--${variant}`;
+  toast.textContent = message;
+  toastStack.appendChild(toast);
+  window.setTimeout(() => {
+    toast.classList.add("toast--fade");
+  }, 2600);
+  window.setTimeout(() => {
+    toast.remove();
+  }, 2900);
+}
+
 function updatePlaygroundStatus() {
-  if (!playgroundStatus) return;
+  if (!playgroundStatus || !playgroundStatusText) return;
   if (ctx.connectedProjectId && ctx.connectedProjectName) {
-    playgroundStatus.textContent = `Cloud Mode · ${ctx.connectedProjectName}`;
+    playgroundStatusText.textContent = `Cloud Mode · ${ctx.connectedProjectName}`;
+    setModeBadge("Connected", "mode-cloud");
     playgroundStatus.removeAttribute("aria-describedby");
     if (playgroundCloudHint) playgroundCloudHint.hidden = true;
+    setActiveSteps(["login", "connect", "run", "open"]);
     return;
   }
   if (ctx.loginStatus?.loggedIn) {
-    playgroundStatus.textContent =
+    playgroundStatusText.textContent =
       "Signed in · not connected to a cloud project";
+    setModeBadge("Signed in", "mode-signed-in");
     playgroundStatus.setAttribute(
       "aria-describedby",
       "playground-cloud-hint",
     );
     if (playgroundCloudHint) playgroundCloudHint.hidden = false;
+    setActiveSteps(["login"]);
     return;
   }
-  playgroundStatus.textContent =
+  playgroundStatusText.textContent =
     "Offline mode · run without logging in; log in for cloud";
+  setModeBadge("Offline", "mode-offline");
   playgroundStatus.removeAttribute("aria-describedby");
   if (playgroundCloudHint) playgroundCloudHint.hidden = true;
+  setActiveSteps([]);
 }
 
 function getRedirectUrl() {
@@ -121,6 +161,14 @@ async function initAuth() {
       ctx.audiotoolClient = await createAudiotoolClient({
         authorization: ctx.loginStatus,
       });
+      try {
+        if (!sessionStorage.getItem("pg-signed-in-toast-shown")) {
+          showToast("Signed in successfully.", "success");
+          sessionStorage.setItem("pg-signed-in-toast-shown", "1");
+        }
+      } catch {
+        /* ignore */
+      }
     } else {
       authBtn.textContent = "Login";
       ctx.audiotoolClient = null;
@@ -132,6 +180,7 @@ async function initAuth() {
     updatePlaygroundStatus();
   } catch (error) {
     logToConsole(`Auth Error: ${error.message}`, true);
+    showToast(`Auth error: ${error.message}`, "error");
     ctx.audiotoolClient = null;
   } finally {
     syncCloudToolbarEnabled();
@@ -236,6 +285,7 @@ async function connectToProject(projectId, displayNameHint) {
     if (!projectName) projectName = projectId;
 
     logToConsole("Cloud Sync Ready! Your code now updates the real project.");
+    showToast(`Connected to ${projectName}.`, "success");
     ctx.connectedProjectId = projectId;
     openProjectBtn.disabled = false;
     ctx.connectedProjectName = projectName;
@@ -247,6 +297,7 @@ async function connectToProject(projectId, displayNameHint) {
     }
   } catch (err) {
     logToConsole(`Connect Error: ${err.message}`, true);
+    showToast(`Connect error: ${err.message}`, "error");
     console.error(err);
   }
 }
@@ -294,10 +345,22 @@ window.addEventListener("pg:onboarding-ended", () => {
 openProjectBtn.addEventListener("click", () => {
   if (!ctx.connectedProjectId) {
     logToConsole("No project connected yet.", true);
+    showToast("Connect a project before opening Studio.", "error");
     return;
   }
   const url = `https://beta.audiotool.com/studio?project=${encodeURIComponent(ctx.connectedProjectId)}`;
   window.open(url, "_blank", "noopener,noreferrer");
+  showToast("Opened project in a new tab.", "success");
+});
+
+window.addEventListener("pg:run-feedback", (event) => {
+  const detail = event?.detail || {};
+  if (!detail.message) return;
+  const variant = detail.variant || "default";
+  showToast(detail.message, variant);
+  if (variant === "success" && ctx.connectedProjectId) {
+    setActiveSteps(["login", "connect", "run", "open"]);
+  }
 });
 
 initAuth();
