@@ -23,6 +23,34 @@ export function installPlaygroundIntellisense(monaco) {
       };
     };
 
+    /** Legacy slot (was nexusui). Use native DOM: button, input[type=range], etc. */
+    declare const Nexus: null;
+
+    /**
+     * Same as \`import { getLoginStatus } from "@audiotool/nexus"\`. Run strips that import line
+     * and injects the real function from the bundle.
+     */
+    declare const getLoginStatus: (opts: {
+      clientId: string;
+      redirectUrl: string;
+      scope: string;
+    }) => Promise<{
+      loggedIn: boolean;
+      login: () => void | Promise<void>;
+      logout: () => void | Promise<void>;
+      getUserName?: () => Promise<string>;
+    }>;
+
+    /** Same as \`import { createAudiotoolClient } from "@audiotool/nexus"\` (injected). */
+    declare const createAudiotoolClient: (opts: {
+      authorization: unknown;
+    }) => Promise<unknown>;
+
+    /** @deprecated Use \`getLoginStatus\` — alias for older playground snippets. */
+    declare const sdkGetLoginStatus: typeof getLoginStatus;
+    /** @deprecated Use \`createAudiotoolClient\` — alias for older playground snippets. */
+    declare const sdkCreateAudiotoolClient: typeof createAudiotoolClient;
+
     declare const client: {
       api: {
         projectService: {

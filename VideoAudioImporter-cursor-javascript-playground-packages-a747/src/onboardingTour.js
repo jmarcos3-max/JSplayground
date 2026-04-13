@@ -28,8 +28,8 @@ const steps = [
   {
     id: "canvas",
     target: "#nexus-ui-container",
-    title: "UI canvas",
-    body: "Your generated dashboard and controls appear here after samples or your code run.",
+    title: "UI panel",
+    body: "Buttons, sliders, and other DOM you create with document.createElement appear here after Run.",
   },
   {
     id: "terminal",

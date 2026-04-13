@@ -1,6 +1,14 @@
-import { templates } from "./templates.js";
+import { gettingStartedSamples } from "./gettingStartedSamples.js";
+
+const gs = gettingStartedSamples;
 
 export const codeSamples = {
+  ...gettingStartedSamples,
+  /** Short ids — assigned explicitly so lookup always works (no spread-only aliases). */
+  gs1: gs.sample1LoginConnect,
+  gs2: gs.sample2CreateAudiotoolClient,
+  gs3: gs.sample3NexusEvents,
+  gs4: gs.sample4ModifyTonematrix,
   starterChain: `// ==========================================
 // SAMPLE: HEISENBERG → DELAY (AUDIO CABLE)
 // ==========================================
@@ -56,16 +64,15 @@ await nexus.modify((t) => {
 
 console.log("> Done: wired ToneMatrix noteOutput into Machiniste notesInput.");`,
 
-  nexusDialGain: `// ==========================================
-// SAMPLE: NEXUSUI DIAL CONTROLS SYNTH GAIN
+  rangeSliderGain: `// ==========================================
+// SAMPLE: RANGE SLIDER → SYNTH GAIN (native DOM only)
 // ==========================================
-// Run loads user code with (nexus, Nexus, client) — Nexus is nexusui (see runUserCode.js).
-console.log("--- Loading sample: NexusUI Dial → gain ---");
+console.log("--- Loading sample: range → gain ---");
 
 let synth;
 await nexus.modify((t) => {
   synth = t.create("heisenberg", {
-    displayName: "Dial Synth",
+    displayName: "Slider Synth",
     positionX: 120,
     positionY: 160,
     gain: 0.7,
@@ -73,210 +80,92 @@ await nexus.modify((t) => {
 });
 
 const ui = document.getElementById("nexus-ui-container");
-ui.innerHTML = "<div style='font-weight:700; margin-bottom:10px;'>Synth Gain</div>";
+ui.innerHTML = "";
 
-const dial = new Nexus.Dial(ui, {
-  size: [110, 110],
-  interaction: "radial",
-  mode: "absolute",
-  min: 0,
-  max: 1,
-  value: 0.7,
-});
+const lab = document.createElement("label");
+lab.textContent = "Synth gain";
+lab.style.display = "block";
+lab.style.fontWeight = "700";
+lab.style.marginBottom = "8px";
 
-dial.on("change", async (v) => {
+const slider = document.createElement("input");
+slider.type = "range";
+slider.min = "0";
+slider.max = "1";
+slider.step = "0.01";
+slider.value = "0.7";
+
+slider.addEventListener("input", async (e) => {
+  const v = parseFloat(e.target.value);
   try {
     await nexus.modify((t) => t.update(synth.fields.gain, v));
     console.log("> gain:", v.toFixed(2));
   } catch (err) {
     console.warn("Update failed:", err);
   }
-});`,
+});
+
+ui.appendChild(lab);
+ui.appendChild(slider);`,
 
   offlineDashboard: `// ==========================================
-// SAMPLE: MINI SYNTH DASHBOARD (OFFLINE)
+// SAMPLE: MINI SYNTH DASHBOARD (OFFLINE, NATIVE DOM)
 // ==========================================
 console.log("--- Loading sample: Mini Synth Dashboard ---");
-
-// 1) Spawn an offline synth + reverb, and wire them
-await nexus.modify((t) => {
-  const synth = t.create("heisenberg", { positionX: 120, positionY: 120, gain: 0.7 });
-  const reverb = t.create("stompboxReverb", { positionX: 420, positionY: 120, mix: 0.45 });
-
-  t.create("desktopAudioCable", {
-    fromSocket: synth.fields.audioOutput.location,
-    toSocket: reverb.fields.audioInput.location,
-  });
-});
-console.log("> Headless synth + reverb ready.");
-
-// 2) Build a tiny dashboard UI
-const ui = document.getElementById("nexus-ui-container");
-ui.innerHTML = \`
-  <div style="font-weight:900; margin-bottom:14px; color: var(--text);">Mini Synth Dashboard</div>
-  <div style="
-    display:flex;
-    justify-content:center;
-    align-items:flex-end;
-    background: rgba(255,255,255,0.05); /* Adjusted slightly for dark/light theme compat */
-    padding: 16px;
-    border-radius: 14px;
-    border: 1px solid var(--border);
-  ">
-    <div id="piano-container"></div>
-  </div>
-\`;
-
-// 3) Dynamically load NexusUI (The Fix!)
-const NexusModule = await import("https://esm.sh/nexusui");
-const NexusLib = NexusModule.default || NexusModule;
-
-// 4) NexusUI piano (slider temporarily removed)
-const piano = new NexusLib.Piano("#piano-container", {
-  size: [320, 110],
-  mode: "button",
-  lowNote: 48,
-  highNote: 60,
-});
-
-// 5) Piano key feedback (UI-only demo)
-piano.on("change", (note) => {
-  if (note?.state) {
-    console.log("> piano note on:", note.note);
-  }
-});
-
-console.log("> Dashboard rendered. Click piano keys.");`,
-
-  offlineSynthDelayPlayground: `// ==========================================
-// SAMPLE: OFFLINE SYNTH + DELAY PLAYGROUND
-// ==========================================
-console.log("--- Loading sample: Offline Synth + Delay Playground ---");
-
-let synth;
-let delay;
-
-await nexus.modify((t) => {
-  synth = t.create("heisenberg", {
-    displayName: "Offline Synth",
-    positionX: 120,
-    positionY: 170,
-    gain: 0.7,
-  });
-
-  delay = t.create("stompboxDelay", {
-    displayName: "Offline Delay",
-    positionX: 430,
-    positionY: 170,
-    mix: 0.4,
-    feedbackFactor: 0.3,
-  });
-
-  t.create("desktopAudioCable", {
-    fromSocket: synth.fields.audioOutput.location,
-    toSocket: delay.fields.audioInput.location,
-  });
-});
-
-const ui = document.getElementById("nexus-ui-container");
-ui.innerHTML = \`
-  <div style="font-weight:900; margin-bottom:12px;">Offline Synth + Delay Playground</div>
-  <div style="display:flex; gap:18px; flex-wrap:wrap; justify-content:center;">
-    <div><div style="font-size:12px; margin-bottom:6px;">Synth gain</div><div id="pg-gain"></div></div>
-    <div><div style="font-size:12px; margin-bottom:6px;">Delay mix</div><div id="pg-mix"></div></div>
-    <div><div style="font-size:12px; margin-bottom:6px;">Feedback</div><div id="pg-feedback"></div></div>
-  </div>
-\`;
-
-const gainDial = new Nexus.Dial("#pg-gain", { size: [96, 96], min: 0, max: 1, value: 0.7 });
-const mixDial = new Nexus.Dial("#pg-mix", { size: [96, 96], min: 0, max: 1, value: 0.4 });
-const feedbackDial = new Nexus.Dial("#pg-feedback", { size: [96, 96], min: 0, max: 0.95, value: 0.3 });
-
-gainDial.on("change", async (v) => {
-  await nexus.modify((t) => t.update(synth.fields.gain, v));
-  console.log("> gain:", v.toFixed(2));
-});
-
-mixDial.on("change", async (v) => {
-  await nexus.modify((t) => t.update(delay.fields.mix, v));
-  console.log("> delay mix:", v.toFixed(2));
-});
-
-feedbackDial.on("change", async (v) => {
-  await nexus.modify((t) => t.update(delay.fields.feedbackFactor, v));
-  console.log("> feedback:", v.toFixed(2));
-});
-
-console.log("> Offline routing ready. Tweak dials and run again to reset scene.");`,
-
-  offlinePianoPresets: `// ==========================================
-// SAMPLE: OFFLINE PIANO + PRESET BUTTONS
-// ==========================================
-console.log("--- Loading sample: Offline Piano + Presets ---");
 
 let synth;
 let reverb;
 await nexus.modify((t) => {
-  synth = t.create("heisenberg", {
-    displayName: "Preset Synth",
-    positionX: 120,
-    positionY: 150,
-    gain: 0.68,
-  });
-  reverb = t.create("stompboxReverb", {
-    displayName: "Preset Reverb",
-    positionX: 420,
-    positionY: 150,
-    mix: 0.38,
-  });
+  synth = t.create("heisenberg", { positionX: 120, positionY: 120, gain: 0.7 });
+  reverb = t.create("stompboxReverb", { positionX: 420, positionY: 120, mix: 0.45 });
+
   t.create("desktopAudioCable", {
     fromSocket: synth.fields.audioOutput.location,
     toSocket: reverb.fields.audioInput.location,
   });
 });
+console.log("> Synth + reverb wired.");
 
 const ui = document.getElementById("nexus-ui-container");
-ui.innerHTML = \`
-  <div style="font-weight:900; margin-bottom:12px;">Offline Piano + Presets</div>
-  <div id="preset-row" style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;"></div>
-  <div id="piano-wrap"></div>
-\`;
+ui.innerHTML = "";
 
-const presets = [
-  { id: "pluck", label: "Pluck", gain: 0.55, reverbMix: 0.18 },
-  { id: "pad", label: "Pad", gain: 0.62, reverbMix: 0.58 },
-  { id: "lead", label: "Lead", gain: 0.78, reverbMix: 0.24 },
-  { id: "ambient", label: "Ambient", gain: 0.5, reverbMix: 0.75 },
-];
+const title = document.createElement("div");
+title.textContent = "Mini Synth Dashboard";
+title.style.fontWeight = "900";
+title.style.marginBottom = "12px";
+ui.appendChild(title);
 
-const row = document.getElementById("preset-row");
-for (const p of presets) {
-  const btn = document.createElement("button");
-  btn.type = "button";
-  btn.textContent = p.label;
-  btn.style.cssText = "padding:7px 12px; border-radius:10px; border:1px solid var(--border); background:rgba(255,255,255,0.8); cursor:pointer;";
-  btn.addEventListener("click", async () => {
-    await nexus.modify((t) => {
-      t.update(synth.fields.gain, p.gain);
-      t.update(reverb.fields.mix, p.reverbMix);
-    });
-    console.log(\`> preset: \${p.label} (gain=\${p.gain.toFixed(2)}, reverb=\${p.reverbMix.toFixed(2)})\`);
-  });
-  row.appendChild(btn);
+function addRange(labelText, min, max, step, initial, onInput) {
+  const wrap = document.createElement("div");
+  wrap.style.marginBottom = "12px";
+  const lab = document.createElement("label");
+  lab.textContent = labelText;
+  lab.style.display = "block";
+  lab.style.fontSize = "12px";
+  lab.style.marginBottom = "4px";
+  const input = document.createElement("input");
+  input.type = "range";
+  input.min = String(min);
+  input.max = String(max);
+  input.step = String(step);
+  input.value = String(initial);
+  input.addEventListener("input", (e) => onInput(parseFloat(e.target.value)));
+  wrap.appendChild(lab);
+  wrap.appendChild(input);
+  ui.appendChild(wrap);
 }
 
-const piano = new Nexus.Piano("#piano-wrap", {
-  size: [360, 120],
-  mode: "button",
-  lowNote: 48,
-  highNote: 72,
+addRange("Synth gain", 0, 1, 0.01, 0.7, async (v) => {
+  await nexus.modify((t) => t.update(synth.fields.gain, v));
+  console.log("> gain:", v.toFixed(2));
 });
 
-piano.on("change", (note) => {
-  if (note?.state) console.log("> note on:", note.note);
+addRange("Reverb mix", 0, 1, 0.01, 0.45, async (v) => {
+  await nexus.modify((t) => t.update(reverb.fields.mix, v));
+  console.log("> reverb mix:", v.toFixed(2));
 });
 
-console.log("> Use preset buttons, then play keys.");`,
+console.log("> Move the sliders to drive the engine.");`,
 
   abcVisualizer: `// ==========================================
 // SAMPLE: ABC VISUALIZER + IMPORT (Gakki or fast Heisenberg)
@@ -646,10 +535,4 @@ importBtn.addEventListener("click", async () => {
     console.warn("ABC import failed:", err?.stack || err);
   }
 });`,
-
-  /** Full editor starters (same source as `templates.js`). */
-  templateOffline: templates.offline,
-  templateOnline: templates.online,
-  templateCheatsheet: templates.cheatsheet,
 };
-

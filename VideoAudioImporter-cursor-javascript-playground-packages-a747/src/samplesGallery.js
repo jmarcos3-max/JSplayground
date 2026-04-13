@@ -1,6 +1,29 @@
 import { codeSamples } from "./codeSamples.js";
 import { ctx } from "./playgroundContext.js";
 import { logToConsole } from "./playgroundConsole.js";
+import {
+  buildPreviewSrcdoc,
+  injectPreviewPostRunHint,
+  loadPreviewIframeSrcdoc,
+  refreshPreviewEmptyOverlay,
+} from "./previewIframe.js";
+
+/** gs* buttons vs canonical keys (handles older bundles / bookmarks). */
+const SAMPLE_KEY_ALIASES = {
+  gs1: "sample1LoginConnect",
+  gs2: "sample2CreateAudiotoolClient",
+  gs3: "sample3NexusEvents",
+  gs4: "sample4ModifyTonematrix",
+};
+
+function resolveSampleSource(key) {
+  const k = (key || "").trim();
+  if (!k) return "";
+  if (codeSamples[k]) return codeSamples[k];
+  const canon = SAMPLE_KEY_ALIASES[k];
+  if (canon && codeSamples[canon]) return codeSamples[canon];
+  return "";
+}
 
 export function initSamplesGallery() {
   const modal = document.getElementById("samples-modal");
@@ -19,7 +42,7 @@ export function initSamplesGallery() {
 
   const selectSampleButton = (btn) => {
     if (!btn) return;
-    selectedSampleKey = btn.getAttribute("data-sample") || "";
+    selectedSampleKey = (btn.getAttribute("data-sample") || "").trim();
     modal?.querySelectorAll(".load-sample-btn.is-selected").forEach((el) => {
       el.classList.remove("is-selected");
     });
@@ -33,8 +56,13 @@ export function initSamplesGallery() {
       logToConsole("Select a sample first, then click Import to Editor.", true);
       return;
     }
-    if (!codeSamples[selectedSampleKey]) {
-      logToConsole(`Sample not found: ${selectedSampleKey}`, true);
+    const key = selectedSampleKey.trim();
+    const source = resolveSampleSource(key);
+    if (!source) {
+      logToConsole(
+        `Sample not found: ${key}. Hard-refresh (Cmd+Shift+R) or rebuild the app.`,
+        true,
+      );
       return;
     }
     if (!ctx.editor) {
@@ -48,8 +76,30 @@ export function initSamplesGallery() {
       selectedBtn?.getAttribute("data-kind") === "template"
         ? "Template"
         : "Sample";
-    ctx.editor.setValue(codeSamples[selectedSampleKey]);
+    ctx.editor.setValue(source);
     logToConsole(`Imported ${kind}: ${selectedSampleKey}`);
+
+    const previewHintKind =
+      key === "gs2"
+        ? "console"
+        : key === "gs3" || key === "gs4"
+          ? "studio"
+          : null;
+    if (previewHintKind) {
+      const iframe = document.getElementById("preview-sandbox-iframe");
+      if (iframe) {
+        void (async () => {
+          try {
+            await loadPreviewIframeSrcdoc(iframe, buildPreviewSrcdoc());
+            injectPreviewPostRunHint(iframe, previewHintKind);
+            refreshPreviewEmptyOverlay();
+          } catch {
+            /* preview iframe optional */
+          }
+        })();
+      }
+    }
+
     close();
   };
 

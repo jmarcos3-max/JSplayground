@@ -901,7 +901,7 @@
     .project-subtitle { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
     .project-meta { margin-left: auto; font-size: 12px; color: var(--text-muted); }
 
-    /* 4. NexusUI Canvas Area */
+    /* 4. Custom UI panel (native DOM from Run) */
     .pane-header {
       padding: 10px 18px;
       background: var(--bg-header);
@@ -921,14 +921,20 @@
     #nexus-ui-container {
       flex-grow: 1;
       min-height: 300px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      background: radial-gradient(circle at center, rgba(15, 118, 110, 0.07) 0%, var(--bg-base) 70%);
-      overflow-y: auto;
       position: relative;
+      background: radial-gradient(circle at center, rgba(15, 118, 110, 0.07) 0%, var(--bg-base) 70%);
+      overflow: hidden;
       color: var(--text-main);
+    }
+
+    #preview-sandbox-iframe {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+      display: block;
+      background: transparent;
     }
     html.pg-theme-dark #nexus-ui-container {
       background: radial-gradient(circle at center, rgba(45, 212, 191, 0.08) 0%, var(--bg-base) 72%);
@@ -937,6 +943,7 @@
     .empty-state {
       position: absolute;
       inset: 18px;
+      z-index: 2;
       display: grid;
       place-items: center;
       pointer-events: none;
@@ -1839,6 +1846,12 @@
     <div id="right-pane">
       <div class="pane-header">Interactive UI Canvas</div>
       <div id="nexus-ui-container">
+        <iframe
+          id="preview-sandbox-iframe"
+          class="preview-sandbox-iframe"
+          title="User code preview"
+          sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
+        ></iframe>
         <div id="preview-empty" class="empty-state">
           <div class="empty-card" aria-hidden="true">
             <div class="empty-eyebrow">Interactive canvas</div>
@@ -1970,25 +1983,6 @@
     })();
   </script>
 
-  <script>
-    (() => {
-      const container = document.getElementById("nexus-ui-container");
-      const empty = document.getElementById("preview-empty");
-      if (!container || !empty) return;
-
-      function update() {
-        const hasRealChildren = Array.from(container.children).some(
-          (el) => el !== empty && el.nodeType === 1,
-        );
-        empty.style.display = hasRealChildren ? "none" : "grid";
-      }
-
-      update();
-      const obs = new MutationObserver(update);
-      obs.observe(container, { childList: true, subtree: false });
-    })();
-  </script>
-
   <!-- SAMPLES MODAL -->
   <div id="samples-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-label="Samples" aria-hidden="true" style="display: none;">
     <div class="modal" role="document">
@@ -1996,24 +1990,38 @@
         <h3>Samples</h3>
         <button id="close-samples-btn" type="button" class="btn-secondary" aria-label="Close">✕</button>
       </div>
-      <p class="modal-subtitle">Samples are grouped by mode so you can start with what works for your current setup.</p>
+      <p class="modal-subtitle">Getting started steps and additional Nexus SDK samples.</p>
       <div class="samples-list">
-        <div class="samples-section-heading">Offline (No Login Required)</div>
-        <button type="button" class="sample-btn load-sample-btn" data-sample="offlineSynthDelayPlayground">
-          <span class="sample-pill">Offline</span>
+        <div class="samples-section-heading">Getting started (4 steps)</div>
+        <button type="button" class="sample-btn load-sample-btn" data-sample="gs1">
+          <span class="sample-pill">Step 1</span>
           <div>
-            <div>Offline Synth + Delay Playground</div>
-            <div class="sample-meta">Create Heisenberg + Delay, then control gain/mix/feedback with Nexus dials.</div>
+            <div>Authorize + Login / Logout</div>
+            <div class="sample-meta">getLoginStatus + Login/Logout; button on document.body (centered preview iframe).</div>
           </div>
         </button>
-        <button type="button" class="sample-btn load-sample-btn" data-sample="offlinePianoPresets">
-          <span class="sample-pill">Offline</span>
+        <button type="button" class="sample-btn load-sample-btn" data-sample="gs2">
+          <span class="sample-pill">Step 2</span>
           <div>
-            <div>Offline Piano + Presets</div>
-            <div class="sample-meta">Play a piano UI and switch Pluck/Pad/Lead/Ambient presets with buttons.</div>
+            <div>Create Audiotool client</div>
+            <div class="sample-meta">Console-only; after Run the preview shows where to read output.</div>
           </div>
         </button>
-        <div class="samples-section-heading">Cloud / Studio (Login + Project Connection)</div>
+        <button type="button" class="sample-btn load-sample-btn" data-sample="gs3">
+          <span class="sample-pill">Step 3</span>
+          <div>
+            <div>React to changes (events)</div>
+            <div class="sample-meta">Best with a connected project + Studio; preview shows setup after Run.</div>
+          </div>
+        </button>
+        <button type="button" class="sample-btn load-sample-btn" data-sample="gs4">
+          <span class="sample-pill">Step 4</span>
+          <div>
+            <div>Create a Heisenberg</div>
+            <div class="sample-meta">nexus.modify — spawn Heisenberg; preview shows Studio setup after Run (like Step 3).</div>
+          </div>
+        </button>
+        <div class="samples-section-heading">More samples</div>
         <button type="button" class="sample-btn load-sample-btn" data-sample="starterChain">
           <span class="sample-pill">Routing</span>
           <div>
@@ -2028,11 +2036,11 @@
             <div class="sample-meta">Wire a notes output into a drum sampler.</div>
           </div>
         </button>
-        <button type="button" class="sample-btn load-sample-btn" data-sample="nexusDialGain">
-          <span class="sample-pill">NexusUI</span>
+        <button type="button" class="sample-btn load-sample-btn" data-sample="rangeSliderGain">
+          <span class="sample-pill">HTML</span>
           <div>
-            <div>Dial controls Synth Gain</div>
-            <div class="sample-meta">Render UI and update a field in the engine.</div>
+            <div>Range slider → synth gain</div>
+            <div class="sample-meta">Plain &lt;input type="range"&gt; + input listener → nexus.modify.</div>
           </div>
         </button>
         <button type="button" class="sample-btn load-sample-btn" data-sample="abcVisualizer">
@@ -2040,29 +2048,6 @@
           <div>
             <div>ABC visualizer + timeline import</div>
             <div class="sample-meta">Render score in canvas and import notes to a synced cloud project.</div>
-          </div>
-        </button>
-        <div class="samples-section-heading">Templates</div>
-        <p class="samples-section-note">These replace the entire editor with a fresh starter script grouped by mode.</p>
-        <button type="button" class="sample-btn load-sample-btn" data-sample="templateOffline" data-kind="template">
-          <span class="sample-pill sample-pill--template">Template</span>
-          <div>
-            <div>Offline UI (NexusUI)</div>
-            <div class="sample-meta">Draw controls with NexusUI and update the local engine.</div>
-          </div>
-        </button>
-        <button type="button" class="sample-btn load-sample-btn" data-sample="templateCheatsheet" data-kind="template">
-          <span class="sample-pill sample-pill--template">Template</span>
-          <div>
-            <div>SDK cheat sheet</div>
-            <div class="sample-meta">Vocabulary + how to discover fields and knobs.</div>
-          </div>
-        </button>
-        <button type="button" class="sample-btn load-sample-btn" data-sample="templateOnline" data-kind="template">
-          <span class="sample-pill sample-pill--template">Template</span>
-          <div>
-            <div>Cloud routing (real Studio)</div>
-            <div class="sample-meta">Spawn devices + cables; best when connected to a project.</div>
           </div>
         </button>
       </div>
