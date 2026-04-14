@@ -22,6 +22,15 @@ Open: `http://127.0.0.1:5173/`
 > The Vite dev server is intentionally configured to use `127.0.0.1` (not
 > `localhost`) because Audiotool OAuth redirect validation requires this.
 
+### Playground quick start (samples)
+
+1. Click **Samples** and import one of the **Getting started (4 steps)** samples.
+2. **Step 2** (Create Audiotool client) now shows the Terminal/output guidance
+   immediately on import (same hint as after Run).
+3. **Step 3** and **Step 4** now show the Studio workflow guidance immediately
+   on import (same hint as after Run).
+4. Click **Run Code** to execute and continue iterating.
+
 ---
 
 ## 2) Audiotool application setup

@@ -10,11 +10,21 @@
         var raw = localStorage.getItem("playground-appearance");
         var o = raw ? JSON.parse(raw) : {};
         var el = document.documentElement;
-        if (o.theme === "dark") el.classList.add("pg-theme-dark");
+        var preferredDark =
+          window.matchMedia &&
+          window.matchMedia("(prefers-color-scheme: dark)").matches;
+        var theme = o.theme === "dark" || o.theme === "light" || o.theme === "system"
+          ? o.theme
+          : "light";
+        var useDark = theme === "dark" || (theme === "system" && preferredDark);
+        if (useDark) el.classList.add("pg-theme-dark");
         var fs = parseInt(o.editorFontSize, 10);
         if (!Number.isFinite(fs)) fs = 14;
         el.dataset.pgEditorFont = String(Math.min(18, Math.max(12, fs)));
         if (o.density === "compact") el.classList.add("pg-density-compact");
+        if (o.motion === "reduced") el.classList.add("pg-reduced-motion");
+        if (o.uiFontSize === "small") el.classList.add("pg-ui-font-small");
+        if (o.uiFontSize === "large") el.classList.add("pg-ui-font-large");
       } catch (e) {}
     })();
   </script>
@@ -165,7 +175,7 @@
     }
     .appearance-menu-label {
       display: block;
-      font-size: 11px;
+      font-size: 13px;
       font-weight: 800;
       letter-spacing: 0.08em;
       text-transform: uppercase;
@@ -367,19 +377,118 @@
       flex-wrap: wrap;
     }
 
+    .toolbar-cluster {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      padding: 6px 8px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.46);
+      border: 1px solid rgba(31, 41, 55, 0.12);
+    }
+    html.pg-theme-dark .toolbar-cluster {
+      background: rgba(255, 255, 255, 0.04);
+      border-color: rgba(255, 255, 255, 0.1);
+    }
+    .toolbar-cluster-label {
+      font-size: 10px;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      font-weight: 800;
+      color: var(--text-muted);
+      margin-right: 2px;
+    }
+
     .playground-status-bar {
       margin-top: 4px;
       padding-top: 10px;
       border-top: 1px solid rgba(31, 41, 55, 0.1);
     }
     #playground-status {
-      display: block;
+      display: inline-block;
       font-size: 13px;
       font-weight: 600;
       color: var(--text-main);
       opacity: 0.82;
       letter-spacing: 0.01em;
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+    .status-mode-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 92px;
+      padding: 3px 10px;
+      border-radius: 999px;
+      margin-right: 8px;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      border: 1px solid transparent;
+      vertical-align: baseline;
+    }
+    .status-mode-badge.mode-offline {
+      color: #0f766e;
+      background: rgba(15, 118, 110, 0.12);
+      border-color: rgba(15, 118, 110, 0.28);
+    }
+    .status-mode-badge.mode-signed-in {
+      color: #7c3aed;
+      background: rgba(124, 58, 237, 0.12);
+      border-color: rgba(124, 58, 237, 0.24);
+    }
+    .status-mode-badge.mode-cloud {
+      color: #1f2937;
+      background: rgba(251, 191, 36, 0.22);
+      border-color: rgba(217, 119, 6, 0.36);
+    }
+    html.pg-theme-dark .status-mode-badge.mode-offline {
+      color: #7ef3e6;
+      background: rgba(45, 212, 191, 0.18);
+      border-color: rgba(45, 212, 191, 0.34);
+    }
+    html.pg-theme-dark .status-mode-badge.mode-signed-in {
+      color: #c4b5fd;
+      background: rgba(139, 92, 246, 0.22);
+      border-color: rgba(167, 139, 250, 0.3);
+    }
+    html.pg-theme-dark .status-mode-badge.mode-cloud {
+      color: #fde68a;
+      background: rgba(251, 191, 36, 0.18);
+      border-color: rgba(251, 191, 36, 0.34);
+    }
+    .playground-steps {
+      margin: 7px 0 0 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--text-muted);
+      list-style: none;
+      padding: 0;
+    }
+    .playground-step {
+      padding: 4px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(31, 41, 55, 0.14);
+      background: rgba(255, 255, 255, 0.5);
+    }
+    .playground-step.is-active {
+      background: rgba(15, 118, 110, 0.14);
+      border-color: rgba(15, 118, 110, 0.34);
+      color: #0e5a55;
+      font-weight: 700;
+    }
+    html.pg-theme-dark .playground-step {
+      background: rgba(255, 255, 255, 0.04);
+      border-color: rgba(255, 255, 255, 0.12);
+    }
+    html.pg-theme-dark .playground-step.is-active {
+      background: rgba(45, 212, 191, 0.16);
+      border-color: rgba(45, 212, 191, 0.35);
+      color: #ccfbf1;
     }
     html.pg-theme-dark #playground-status {
       opacity: 1;
@@ -412,7 +521,7 @@
       transition: border-color 0.2s;
     }
     input[type="text"]:focus, select:focus { border-color: var(--accent-blue); }
-    input[type="text"] { width: 260px; }
+    input[type="text"] { width: clamp(170px, 28vw, 260px); }
     #top-bar input[type="text"]::placeholder {
       color: var(--text-muted);
       opacity: 1;
@@ -520,6 +629,41 @@
     @media (prefers-reduced-motion: reduce) {
       * { transition: none !important; scroll-behavior: auto !important; }
       button:hover { transform: none; }
+    }
+    html.pg-reduced-motion * {
+      transition: none !important;
+      animation: none !important;
+      scroll-behavior: auto !important;
+    }
+    html.pg-ui-font-small button,
+    html.pg-ui-font-small input[type="text"],
+    html.pg-ui-font-small select,
+    html.pg-ui-font-small .sample-meta,
+    html.pg-ui-font-small .modal-subtitle {
+      font-size: 12px;
+    }
+    html.pg-ui-font-small .toolbar-label,
+    html.pg-ui-font-small .pane-header {
+      font-size: 11px;
+    }
+    html.pg-ui-font-small #playground-status,
+    html.pg-ui-font-small #playground-cloud-hint {
+      font-size: 12px;
+    }
+    html.pg-ui-font-large button,
+    html.pg-ui-font-large input[type="text"],
+    html.pg-ui-font-large select,
+    html.pg-ui-font-large .sample-meta,
+    html.pg-ui-font-large .modal-subtitle {
+      font-size: 14px;
+    }
+    html.pg-ui-font-large .toolbar-label,
+    html.pg-ui-font-large .pane-header {
+      font-size: 13px;
+    }
+    html.pg-ui-font-large #playground-status,
+    html.pg-ui-font-large #playground-cloud-hint {
+      font-size: 14px;
     }
 
     button.action-btn {
@@ -757,7 +901,7 @@
     .project-subtitle { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
     .project-meta { margin-left: auto; font-size: 12px; color: var(--text-muted); }
 
-    /* 4. NexusUI Canvas Area */
+    /* 4. Custom UI panel (native DOM from Run) */
     .pane-header {
       padding: 10px 18px;
       background: var(--bg-header);
@@ -776,15 +920,21 @@
 
     #nexus-ui-container {
       flex-grow: 1;
-      min-height: 300px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      background: radial-gradient(circle at center, rgba(15, 118, 110, 0.07) 0%, var(--bg-base) 70%);
-      overflow-y: auto;
+      min-height: clamp(220px, 42vh, 300px);
       position: relative;
+      background: radial-gradient(circle at center, rgba(15, 118, 110, 0.07) 0%, var(--bg-base) 70%);
+      overflow: hidden;
       color: var(--text-main);
+    }
+
+    #preview-sandbox-iframe {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+      display: block;
+      background: transparent;
     }
     html.pg-theme-dark #nexus-ui-container {
       background: radial-gradient(circle at center, rgba(45, 212, 191, 0.08) 0%, var(--bg-base) 72%);
@@ -793,6 +943,7 @@
     .empty-state {
       position: absolute;
       inset: 18px;
+      z-index: 2;
       display: grid;
       place-items: center;
       pointer-events: none;
@@ -907,7 +1058,7 @@
       align-items: stretch;
     }
 
-    @media (max-width: 640px) {
+    @media (max-width: 980px) {
       .empty-card {
         padding: 20px 16px 16px;
         border-radius: 18px;
@@ -923,6 +1074,27 @@
 
       .empty-workflows {
         grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 1100px) {
+      #top-bar {
+        padding: 12px 14px;
+      }
+      .toolbar-group {
+        padding: 8px 10px;
+      }
+      .toolbar-cluster {
+        padding: 5px 7px;
+      }
+      .toolbar {
+        padding: 10px 12px;
+      }
+      .toolbar.pane-header {
+        padding: 10px 12px;
+      }
+      #playground-cloud-hint {
+        font-size: 11.5px;
       }
     }
 
@@ -1497,7 +1669,7 @@
     }
     @media (max-height: 820px) {
       #nexus-ui-container {
-        min-height: 340px;
+        min-height: 220px;
       }
       body #console-output {
         height: clamp(120px, 20vh, 170px);
@@ -1507,6 +1679,55 @@
       background: #0d1218;
       box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
       border-color: var(--border-color);
+    }
+    .toast-stack {
+      position: fixed;
+      right: 16px;
+      bottom: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      z-index: 1600;
+      pointer-events: none;
+    }
+    .toast {
+      max-width: min(340px, calc(100vw - 32px));
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(31, 41, 55, 0.2);
+      background: rgba(255, 255, 255, 0.95);
+      color: var(--text-main);
+      font-size: 13px;
+      font-weight: 600;
+      box-shadow: 0 12px 28px rgba(31, 41, 55, 0.2);
+      transform: translateY(0);
+      opacity: 1;
+      transition: transform 180ms ease, opacity 180ms ease;
+    }
+    .toast.toast--success {
+      border-color: rgba(5, 150, 105, 0.45);
+      background: rgba(236, 253, 245, 0.95);
+    }
+    .toast.toast--error {
+      border-color: rgba(220, 38, 38, 0.45);
+      background: rgba(254, 242, 242, 0.96);
+    }
+    .toast.toast--fade {
+      transform: translateY(8px);
+      opacity: 0;
+    }
+    html.pg-theme-dark .toast {
+      background: rgba(15, 23, 42, 0.95);
+      border-color: rgba(148, 163, 184, 0.3);
+      box-shadow: 0 14px 28px rgba(0, 0, 0, 0.45);
+    }
+    html.pg-theme-dark .toast.toast--success {
+      border-color: rgba(45, 212, 191, 0.42);
+      background: rgba(15, 50, 44, 0.92);
+    }
+    html.pg-theme-dark .toast.toast--error {
+      border-color: rgba(248, 113, 113, 0.5);
+      background: rgba(69, 10, 10, 0.9);
     }
   </style>
 </head>
@@ -1544,6 +1765,7 @@
           <div class="appearance-segment" role="radiogroup" aria-labelledby="appearance-label-theme">
             <button type="button" id="appearance-theme-light" role="radio" aria-checked="true" aria-pressed="true">Light</button>
             <button type="button" id="appearance-theme-dark" role="radio" aria-checked="false" aria-pressed="false">Dark</button>
+            <button type="button" id="appearance-theme-system" role="radio" aria-checked="false" aria-pressed="false">System</button>
           </div>
         </div>
         <div class="appearance-menu-field">
@@ -1554,9 +1776,24 @@
           </div>
         </div>
         <div class="appearance-menu-field">
+          <span class="appearance-menu-label" id="appearance-label-motion">Motion</span>
+          <div class="appearance-segment" role="radiogroup" aria-labelledby="appearance-label-motion">
+            <button type="button" id="appearance-motion-standard" role="radio" aria-checked="true" aria-pressed="true">Standard</button>
+            <button type="button" id="appearance-motion-reduced" role="radio" aria-checked="false" aria-pressed="false">Reduced</button>
+          </div>
+        </div>
+        <div class="appearance-menu-field">
+          <span class="appearance-menu-label" id="appearance-label-ui-font">UI text size</span>
+          <div class="appearance-segment" role="radiogroup" aria-labelledby="appearance-label-ui-font">
+            <button type="button" id="appearance-ui-font-small" role="radio" aria-checked="false" aria-pressed="false">Small</button>
+            <button type="button" id="appearance-ui-font-medium" role="radio" aria-checked="true" aria-pressed="true">Medium</button>
+            <button type="button" id="appearance-ui-font-large" role="radio" aria-checked="false" aria-pressed="false">Large</button>
+          </div>
+        </div>
+        <div class="appearance-menu-field">
           <label class="appearance-menu-label" for="appearance-font-range">Editor font size</label>
           <div class="appearance-font-row">
-            <input type="range" id="appearance-font-range" min="12" max="18" step="1" value="14" />
+            <input type="range" id="appearance-font-range" min="12" max="18" step="1" value="14" aria-describedby="appearance-font-value" />
             <span class="appearance-font-value" id="appearance-font-value" aria-live="polite">14px</span>
           </div>
         </div>
@@ -1570,22 +1807,40 @@
       <section class="toolbar-group toolbar-group-wide" aria-label="Project">
         <div class="toolbar-label">Project</div>
         <div class="toolbar-row">
-          <button id="auth-btn" type="button">Login</button>
-          <div id="projects-dropdown">
-            <button id="list-projects-btn" type="button" aria-haspopup="menu" aria-expanded="false">List Projects</button>
-            <div id="projects-menu" role="menu" aria-label="Projects" hidden></div>
+          <div class="toolbar-cluster">
+            <span class="toolbar-cluster-label">Account</span>
+            <button id="auth-btn" type="button">Login</button>
           </div>
-          <button id="create-project-btn" type="button" aria-label="Create new cloud project on your account">New project</button>
-          <input type="text" id="project-input" inputmode="text" autocomplete="off" aria-label="Studio URL or project ID" placeholder="https://beta.audiotool.com/studio?project=<project-id>">
-          <button id="connect-btn" type="button">Connect Project</button>
-          <button id="open-project-btn" type="button" disabled>Open Project</button>
-          <button id="take-tour-btn" type="button" class="btn-secondary">Take tour</button>
+          <div class="toolbar-cluster">
+            <span class="toolbar-cluster-label">Project</span>
+            <div id="projects-dropdown">
+              <button id="list-projects-btn" type="button" aria-haspopup="menu" aria-expanded="false">List Projects</button>
+              <div id="projects-menu" role="menu" aria-label="Projects" hidden></div>
+            </div>
+            <button id="create-project-btn" type="button" aria-label="Create new cloud project on your account">New project</button>
+            <input type="text" id="project-input" inputmode="text" autocomplete="off" aria-label="Studio URL or project ID" placeholder="https://beta.audiotool.com/studio?project=<project-id>">
+            <button id="connect-btn" type="button">Connect Project</button>
+            <button id="open-project-btn" type="button" disabled>Open Project</button>
+          </div>
+          <div class="toolbar-cluster">
+            <span class="toolbar-cluster-label">Help</span>
+            <button id="take-tour-btn" type="button" class="btn-secondary">Take tour</button>
+          </div>
         </div>
         <div class="playground-status-bar">
-          <span id="playground-status" role="status" aria-live="polite">Offline mode · run without logging in; log in for cloud</span>
+          <span id="playground-status" role="status" aria-live="polite">
+            <span id="playground-mode-badge" class="status-mode-badge mode-offline">Offline</span>
+            <span id="playground-status-text">Offline mode · run without logging in; log in for cloud</span>
+          </span>
           <p id="playground-cloud-hint" class="playground-cloud-hint" hidden>
             To sync with Audiotool Studio: paste a project URL or ID, or use <strong>List Projects</strong> / <strong>New project</strong>, then <strong>Connect Project</strong>. Run your code, then <strong>Open Project</strong>.
           </p>
+          <ol id="playground-steps" class="playground-steps" aria-label="Suggested flow">
+            <li class="playground-step" data-step="login">1. Log in</li>
+            <li class="playground-step" data-step="connect">2. Connect project</li>
+            <li class="playground-step" data-step="run">3. Run code</li>
+            <li class="playground-step" data-step="open">4. Open project</li>
+          </ol>
         </div>
       </section>
 
@@ -1612,11 +1867,17 @@
     <div id="right-pane">
       <div class="pane-header">Interactive UI Canvas</div>
       <div id="nexus-ui-container">
+        <iframe
+          id="preview-sandbox-iframe"
+          class="preview-sandbox-iframe"
+          title="User code preview"
+          sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
+        ></iframe>
         <div id="preview-empty" class="empty-state">
           <div class="empty-card" aria-hidden="true">
-            <div class="empty-eyebrow">Interactive canvas</div>
+            <div class="empty-eyebrow">JS Playground Quickstart</div>
             <div class="empty-text">
-              Run code to render controls here, or start with a sample and iterate from there.
+              Run small examples to learn the Audiotool Nexus SDK. Start with a sample, then modify it or write your own code.
             </div>
 
             <div class="empty-actions">
@@ -1631,30 +1892,31 @@
               <div class="empty-workflow empty-workflow--default">
                 <div class="empty-workflow-head empty-workflow-head--default">
                   <span class="empty-workflow-icon" aria-hidden="true">⚡</span>
-                  Offline mode
+                  OFFLINE MODE
                 </div>
                 <p class="empty-workflow-tagline">
-                  Fastest path to a first result. No login required.
+                  Fastest way to try examples. No login required.
                 </p>
                 <ol class="empty-workflow-steps">
-                  <li><span class="wf-action">Browse Samples</span> or write code</li>
-                  <li><span class="wf-action">Run Code</span> to generate UI</li>
+                  <li><span class="wf-action">Browse Samples</span></li>
+                  <li><span class="wf-action">Run Code</span></li>
                 </ol>
               </div>
 
               <div class="empty-workflow empty-workflow--studio">
                 <div class="empty-workflow-head">
                   <span class="empty-workflow-icon" aria-hidden="true">☁️</span>
-                  Studio mode
+                  STUDIO MODE
                 </div>
                 <p class="empty-workflow-tagline">
-                  Connect a cloud project, then sync and open it in Audiotool Studio.
+                  Connect to a cloud project and control it with code.
                 </p>
                 <ol class="empty-workflow-steps">
                   <li><span class="wf-action">Log in</span></li>
                   <li>Select a project or paste a URL</li>
                   <li><span class="wf-action">Connect Project</span></li>
-                  <li>Run code, then <span class="wf-action">Open Project</span></li>
+                  <li><span class="wf-action">Run Code</span></li>
+                  <li><span class="wf-action">Open Project</span></li>
                 </ol>
               </div>
             </div>
@@ -1665,6 +1927,7 @@
       <div id="console-output" role="log" aria-live="polite" aria-relevant="additions"></div>
     </div>
   </div>
+  <div id="toast-stack" class="toast-stack" aria-live="polite" aria-atomic="false"></div>
 
   <script>
     (() => {
@@ -1742,25 +2005,6 @@
     })();
   </script>
 
-  <script>
-    (() => {
-      const container = document.getElementById("nexus-ui-container");
-      const empty = document.getElementById("preview-empty");
-      if (!container || !empty) return;
-
-      function update() {
-        const hasRealChildren = Array.from(container.children).some(
-          (el) => el !== empty && el.nodeType === 1,
-        );
-        empty.style.display = hasRealChildren ? "none" : "grid";
-      }
-
-      update();
-      const obs = new MutationObserver(update);
-      obs.observe(container, { childList: true, subtree: false });
-    })();
-  </script>
-
   <!-- SAMPLES MODAL -->
   <div id="samples-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-label="Samples" aria-hidden="true" style="display: none;">
     <div class="modal" role="document">
@@ -1768,24 +2012,38 @@
         <h3>Samples</h3>
         <button id="close-samples-btn" type="button" class="btn-secondary" aria-label="Close">✕</button>
       </div>
-      <p class="modal-subtitle">Samples are grouped by mode so you can start with what works for your current setup.</p>
+      <p class="modal-subtitle">Getting started quick start (4 steps) plus additional Nexus SDK samples.</p>
       <div class="samples-list">
-        <div class="samples-section-heading">Offline (No Login Required)</div>
-        <button type="button" class="sample-btn load-sample-btn" data-sample="offlineSynthDelayPlayground">
-          <span class="sample-pill">Offline</span>
+        <div class="samples-section-heading">Getting started (4 steps)</div>
+        <button type="button" class="sample-btn load-sample-btn" data-sample="gs1">
+          <span class="sample-pill">Step 1</span>
           <div>
-            <div>Offline Synth + Delay Playground</div>
-            <div class="sample-meta">Create Heisenberg + Delay, then control gain/mix/feedback with Nexus dials.</div>
+            <div>Authorize + Login / Logout</div>
+            <div class="sample-meta">getLoginStatus + Login/Logout; button on document.body (centered preview iframe).</div>
           </div>
         </button>
-        <button type="button" class="sample-btn load-sample-btn" data-sample="offlinePianoPresets">
-          <span class="sample-pill">Offline</span>
+        <button type="button" class="sample-btn load-sample-btn" data-sample="gs2">
+          <span class="sample-pill">Step 2</span>
           <div>
-            <div>Offline Piano + Presets</div>
-            <div class="sample-meta">Play a piano UI and switch Pluck/Pad/Lead/Ambient presets with buttons.</div>
+            <div>Create Audiotool client</div>
+            <div class="sample-meta">Console-only; importing shows where to read output (same as after Run).</div>
           </div>
         </button>
-        <div class="samples-section-heading">Cloud / Studio (Login + Project Connection)</div>
+        <button type="button" class="sample-btn load-sample-btn" data-sample="gs3">
+          <span class="sample-pill">Step 3</span>
+          <div>
+            <div>React to changes (events)</div>
+            <div class="sample-meta">Best with a connected project + Studio; importing shows setup (same as after Run).</div>
+          </div>
+        </button>
+        <button type="button" class="sample-btn load-sample-btn" data-sample="gs4">
+          <span class="sample-pill">Step 4</span>
+          <div>
+            <div>Create a Heisenberg</div>
+            <div class="sample-meta">nexus.modify — spawn Heisenberg; importing shows Studio setup (same as after Run, like Step 3).</div>
+          </div>
+        </button>
+        <div class="samples-section-heading">More samples</div>
         <button type="button" class="sample-btn load-sample-btn" data-sample="starterChain">
           <span class="sample-pill">Routing</span>
           <div>
@@ -1800,18 +2058,11 @@
             <div class="sample-meta">Wire a notes output into a drum sampler.</div>
           </div>
         </button>
-        <button type="button" class="sample-btn load-sample-btn" data-sample="nexusDialGain">
-          <span class="sample-pill">NexusUI</span>
+        <button type="button" class="sample-btn load-sample-btn" data-sample="rangeSliderGain">
+          <span class="sample-pill">HTML</span>
           <div>
-            <div>Dial controls Synth Gain</div>
-            <div class="sample-meta">Render UI and update a field in the engine.</div>
-          </div>
-        </button>
-        <button type="button" class="sample-btn load-sample-btn" data-sample="mixerMelody">
-          <span class="sample-pill">Audio</span>
-          <div>
-            <div>Heisenberg + mixer + melody</div>
-            <div class="sample-meta">Synth auto-patched to a strip + MIDI clip — press Play in Studio to hear it.</div>
+            <div>Range slider → synth gain</div>
+            <div class="sample-meta">Plain &lt;input type="range"&gt; + input listener → nexus.modify.</div>
           </div>
         </button>
         <button type="button" class="sample-btn load-sample-btn" data-sample="abcVisualizer">
@@ -1819,29 +2070,6 @@
           <div>
             <div>ABC visualizer + timeline import</div>
             <div class="sample-meta">Render score in canvas and import notes to a synced cloud project.</div>
-          </div>
-        </button>
-        <div class="samples-section-heading">Templates</div>
-        <p class="samples-section-note">These replace the entire editor with a fresh starter script grouped by mode.</p>
-        <button type="button" class="sample-btn load-sample-btn" data-sample="templateOffline" data-kind="template">
-          <span class="sample-pill sample-pill--template">Template</span>
-          <div>
-            <div>Offline UI (NexusUI)</div>
-            <div class="sample-meta">Draw controls with NexusUI and update the local engine.</div>
-          </div>
-        </button>
-        <button type="button" class="sample-btn load-sample-btn" data-sample="templateCheatsheet" data-kind="template">
-          <span class="sample-pill sample-pill--template">Template</span>
-          <div>
-            <div>SDK cheat sheet</div>
-            <div class="sample-meta">Vocabulary + how to discover fields and knobs.</div>
-          </div>
-        </button>
-        <button type="button" class="sample-btn load-sample-btn" data-sample="templateOnline" data-kind="template">
-          <span class="sample-pill sample-pill--template">Template</span>
-          <div>
-            <div>Cloud routing (real Studio)</div>
-            <div class="sample-meta">Spawn devices + cables; best when connected to a project.</div>
           </div>
         </button>
       </div>

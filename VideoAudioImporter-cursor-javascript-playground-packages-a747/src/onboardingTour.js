@@ -1,11 +1,11 @@
-const TOUR_KEY = "pg_onboarding_dismissed_v2";
+const TOUR_KEY = "pg_onboarding_dismissed_v3";
 
 const steps = [
   {
     id: "welcome",
     target: "#title-bar",
-    title: "Welcome to the JSPlayground!",
-    body: "This is your creative sandbox for the Audiotool Nexus SDK. In this space, code transforms into signal, rhythm, and structure. You can automate studio tasks, build custom MIDI tools, or search cloud samples with a single script. Let’s get you wired in.",
+    title: "Welcome to the JS Playground",
+    body: "This is a space to explore the Audiotool Nexus SDK through small, runnable examples. Start with the Login sample, then connect to a project and try modifying it. Each example shows a specific task and can be copied into your own app.",
   },
   {
     id: "appearance",
@@ -28,8 +28,8 @@ const steps = [
   {
     id: "canvas",
     target: "#nexus-ui-container",
-    title: "UI canvas",
-    body: "Your generated dashboard and controls appear here after samples or your code run.",
+    title: "UI panel",
+    body: "Buttons, sliders, and other DOM you create with document.createElement appear here after Run.",
   },
   {
     id: "terminal",

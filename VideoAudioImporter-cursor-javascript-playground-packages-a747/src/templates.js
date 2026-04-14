@@ -3,50 +3,48 @@ export const CLOUD_STUDIO_RUN_MARKER = "TEMPLATE: CLOUD SYNC & ROUTING";
 
 export const templates = {
   offline: `// ==========================================
-// TEMPLATE: OFFLINE MODE (WITH NEXUS UI)
+// TEMPLATE: OFFLINE MODE (NATIVE HTML CONTROLS)
 // ==========================================
-// Offline mode uses a local (unsynced) document. We use NexusUI to draw controls.
+// Offline mode uses a local (unsynced) document. Plain <input type="range"> + listeners.
 
 console.log("--- Loading Offline Template ---");
 
-// 1. Spawn a Heisenberg synth in the local engine
 let mySynth;
 await nexus.modify((t) => {
-  // You were right! 'gain' is the correct property.
   mySynth = t.create("heisenberg", { positionX: 100, positionY: 100, gain: 0.7 });
 });
 console.log("> Synth created in memory.");
 
-// 2. Load the NexusUI Library dynamically (This prevents the ReferenceError)
-const NexusModule = await import("https://esm.sh/nexusui");
-const NexusLib = NexusModule.default || NexusModule;
-
-// 3. Draw a visual knob on the screen
 const uiContainer = document.getElementById("nexus-ui-container");
-uiContainer.innerHTML = "<div style='color:#ccc; margin-bottom:10px;'>Synth Gain</div>";
+uiContainer.innerHTML = "";
 
-// Use the imported 'NexusLib' to draw the dial
-const dial = new NexusLib.Dial(uiContainer, {
-  size: [100, 100],
-  interaction: "radial",
-  mode: "absolute",
-  min: 0,
-  max: 1,
-  value: 0.7,
-});
+const label = document.createElement("label");
+label.textContent = "Synth gain";
+label.style.display = "block";
+label.style.fontSize = "12px";
+label.style.marginBottom = "6px";
 
-// 4. Bridge the visual knob to the engine
-dial.on("change", async (v) => {
+const slider = document.createElement("input");
+slider.type = "range";
+slider.min = "0";
+slider.max = "1";
+slider.step = "0.01";
+slider.value = "0.7";
+
+slider.addEventListener("input", async (e) => {
+  const value = parseFloat(e.target.value);
   try {
-    // Restored to your original, correct code!
     if (mySynth?.fields?.gain) {
-      await nexus.modify((t) => t.update(mySynth.fields.gain, v));
-      console.log("> Engine gain updated to: " + v.toFixed(2));
+      await nexus.modify((t) => t.update(mySynth.fields.gain, value));
+      console.log("> Engine gain updated to: " + value.toFixed(2));
     }
   } catch (err) {
     console.warn("Update failed:", err);
   }
-});`,
+});
+
+uiContainer.appendChild(label);
+uiContainer.appendChild(slider);`,
 
   online: `// ==========================================
 // TEMPLATE: CLOUD SYNC & ROUTING
