@@ -2,7 +2,11 @@ name: Deploy GitHub Pages
 
 on:
   push:
-    branches: ["main", "JSPlayground2"]
+    branches:
+      - main
+      - JSPlayground2
+      - copilot/deploy-jsplayground2
+      - copilot/deploy-to-production
   workflow_dispatch:
 
 permissions:
