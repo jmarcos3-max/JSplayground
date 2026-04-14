@@ -175,7 +175,7 @@
     }
     .appearance-menu-label {
       display: block;
-      font-size: 11px;
+      font-size: 13px;
       font-weight: 800;
       letter-spacing: 0.08em;
       text-transform: uppercase;
@@ -521,7 +521,7 @@
       transition: border-color 0.2s;
     }
     input[type="text"]:focus, select:focus { border-color: var(--accent-blue); }
-    input[type="text"] { width: 260px; }
+    input[type="text"] { width: clamp(170px, 28vw, 260px); }
     #top-bar input[type="text"]::placeholder {
       color: var(--text-muted);
       opacity: 1;
@@ -920,7 +920,7 @@
 
     #nexus-ui-container {
       flex-grow: 1;
-      min-height: 300px;
+      min-height: clamp(220px, 42vh, 300px);
       position: relative;
       background: radial-gradient(circle at center, rgba(15, 118, 110, 0.07) 0%, var(--bg-base) 70%);
       overflow: hidden;
@@ -1058,7 +1058,7 @@
       align-items: stretch;
     }
 
-    @media (max-width: 640px) {
+    @media (max-width: 980px) {
       .empty-card {
         padding: 20px 16px 16px;
         border-radius: 18px;
@@ -1074,6 +1074,27 @@
 
       .empty-workflows {
         grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 1100px) {
+      #top-bar {
+        padding: 12px 14px;
+      }
+      .toolbar-group {
+        padding: 8px 10px;
+      }
+      .toolbar-cluster {
+        padding: 5px 7px;
+      }
+      .toolbar {
+        padding: 10px 12px;
+      }
+      .toolbar.pane-header {
+        padding: 10px 12px;
+      }
+      #playground-cloud-hint {
+        font-size: 11.5px;
       }
     }
 
@@ -1648,7 +1669,7 @@
     }
     @media (max-height: 820px) {
       #nexus-ui-container {
-        min-height: 340px;
+        min-height: 220px;
       }
       body #console-output {
         height: clamp(120px, 20vh, 170px);
@@ -1854,9 +1875,9 @@
         ></iframe>
         <div id="preview-empty" class="empty-state">
           <div class="empty-card" aria-hidden="true">
-            <div class="empty-eyebrow">Interactive canvas</div>
+            <div class="empty-eyebrow">JS Playground Quickstart</div>
             <div class="empty-text">
-              Run code to render controls here, or start with a sample and iterate from there.
+              Run small examples to learn the Audiotool Nexus SDK. Start with a sample, then modify it or write your own code.
             </div>
 
             <div class="empty-actions">
@@ -1871,30 +1892,31 @@
               <div class="empty-workflow empty-workflow--default">
                 <div class="empty-workflow-head empty-workflow-head--default">
                   <span class="empty-workflow-icon" aria-hidden="true">⚡</span>
-                  Offline mode
+                  OFFLINE MODE
                 </div>
                 <p class="empty-workflow-tagline">
-                  Fastest path to a first result. No login required.
+                  Fastest way to try examples. No login required.
                 </p>
                 <ol class="empty-workflow-steps">
-                  <li><span class="wf-action">Browse Samples</span> or write code</li>
-                  <li><span class="wf-action">Run Code</span> to generate UI</li>
+                  <li><span class="wf-action">Browse Samples</span></li>
+                  <li><span class="wf-action">Run Code</span></li>
                 </ol>
               </div>
 
               <div class="empty-workflow empty-workflow--studio">
                 <div class="empty-workflow-head">
                   <span class="empty-workflow-icon" aria-hidden="true">☁️</span>
-                  Studio mode
+                  STUDIO MODE
                 </div>
                 <p class="empty-workflow-tagline">
-                  Connect a cloud project, then sync and open it in Audiotool Studio.
+                  Connect to a cloud project and control it with code.
                 </p>
                 <ol class="empty-workflow-steps">
                   <li><span class="wf-action">Log in</span></li>
                   <li>Select a project or paste a URL</li>
                   <li><span class="wf-action">Connect Project</span></li>
-                  <li>Run code, then <span class="wf-action">Open Project</span></li>
+                  <li><span class="wf-action">Run Code</span></li>
+                  <li><span class="wf-action">Open Project</span></li>
                 </ol>
               </div>
             </div>
@@ -1990,7 +2012,7 @@
         <h3>Samples</h3>
         <button id="close-samples-btn" type="button" class="btn-secondary" aria-label="Close">✕</button>
       </div>
-      <p class="modal-subtitle">Getting started steps and additional Nexus SDK samples.</p>
+      <p class="modal-subtitle">Getting started quick start (4 steps) plus additional Nexus SDK samples.</p>
       <div class="samples-list">
         <div class="samples-section-heading">Getting started (4 steps)</div>
         <button type="button" class="sample-btn load-sample-btn" data-sample="gs1">
@@ -2004,21 +2026,21 @@
           <span class="sample-pill">Step 2</span>
           <div>
             <div>Create Audiotool client</div>
-            <div class="sample-meta">Console-only; after Run the preview shows where to read output.</div>
+            <div class="sample-meta">Console-only; importing shows where to read output (same as after Run).</div>
           </div>
         </button>
         <button type="button" class="sample-btn load-sample-btn" data-sample="gs3">
           <span class="sample-pill">Step 3</span>
           <div>
             <div>React to changes (events)</div>
-            <div class="sample-meta">Best with a connected project + Studio; preview shows setup after Run.</div>
+            <div class="sample-meta">Best with a connected project + Studio; importing shows setup (same as after Run).</div>
           </div>
         </button>
         <button type="button" class="sample-btn load-sample-btn" data-sample="gs4">
           <span class="sample-pill">Step 4</span>
           <div>
             <div>Create a Heisenberg</div>
-            <div class="sample-meta">nexus.modify — spawn Heisenberg; preview shows Studio setup after Run (like Step 3).</div>
+            <div class="sample-meta">nexus.modify — spawn Heisenberg; importing shows Studio setup (same as after Run, like Step 3).</div>
           </div>
         </button>
         <div class="samples-section-heading">More samples</div>
