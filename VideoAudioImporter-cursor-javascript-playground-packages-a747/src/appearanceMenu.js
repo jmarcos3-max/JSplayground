@@ -1,5 +1,6 @@
 import * as monaco from "monaco-editor";
 import { ctx } from "./playgroundContext.js";
+import { syncPreviewIframeTheme } from "./previewIframe.js";
 
 const APPEARANCE_STORAGE_KEY = "playground-appearance";
 
@@ -9,7 +10,11 @@ function readAppearance() {
     const o = raw ? JSON.parse(raw) : {};
     return {
       theme:
-        o.theme === "dark" || o.theme === "system" ? o.theme : "light",
+        o.theme === "dark" || o.theme === "night" || o.theme === "system"
+          ? o.theme === "night"
+            ? "dark"
+            : o.theme
+          : "light",
       density: o.density === "compact" ? "compact" : "comfortable",
       motion: o.motion === "reduced" ? "reduced" : "standard",
       uiFontSize:
@@ -45,6 +50,7 @@ function applyPlaygroundTheme(theme) {
       window.matchMedia("(prefers-color-scheme: dark)").matches);
   document.documentElement.classList.toggle("pg-theme-dark", dark);
   monaco.editor.setTheme(dark ? "vs-dark" : "vs");
+  syncPreviewIframeTheme();
 }
 
 function applyPlaygroundDensity(density) {

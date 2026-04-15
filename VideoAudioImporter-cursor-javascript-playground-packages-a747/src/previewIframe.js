@@ -2,12 +2,21 @@
 
 let innerObserver = null;
 
-export function buildPreviewSrcdoc() {
+function getPreviewThemeColors() {
   const dark = document.documentElement.classList.contains("pg-theme-dark");
-  const bg = dark ? "#141c28" : "#fbf6ea";
-  const fg = dark ? "#e5e7eb" : "#1f2937";
-  const border = dark ? "rgba(229, 231, 235, 0.14)" : "rgba(31, 41, 55, 0.12)";
-  const panelBg = dark ? "rgba(255, 255, 255, 0.045)" : "rgba(255, 255, 255, 0.88)";
+  return {
+    dark,
+    bg: dark
+      ? "linear-gradient(180deg, #0e1622, #0a111b)"
+      : "radial-gradient(circle at 50% 42%, rgba(15, 118, 110, 0.08) 0%, #fbf6ea 58%)",
+    fg: dark ? "#e5e7eb" : "#1f2937",
+    panelBg: dark ? "rgba(255, 255, 255, 0.045)" : "rgba(255, 255, 255, 0.88)",
+    panelBorder: dark ? "rgba(229, 231, 235, 0.14)" : "rgba(31, 41, 55, 0.12)",
+  };
+}
+
+export function buildPreviewSrcdoc() {
+  const { dark, bg, fg, panelBorder: border, panelBg } = getPreviewThemeColors();
   const shadow = dark
     ? "0 10px 36px rgba(0, 0, 0, 0.38)"
     : "0 12px 32px rgba(44, 62, 80, 0.1)";
@@ -18,7 +27,9 @@ body {
   box-sizing: border-box;
   padding: 20px 18px;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  background: radial-gradient(circle at 50% 42%, ${dark ? "rgba(45, 212, 191, 0.07)" : "rgba(15, 118, 110, 0.08)"} 0%, ${bg} 58%);
+  background: ${dark
+    ? "linear-gradient(180deg, #0e1622, #0a111b)"
+    : "radial-gradient(circle at 50% 42%, rgba(15, 118, 110, 0.08) 0%, #fbf6ea 58%)"};
   color: ${fg};
   line-height: 1.45;
   /* Center controls whether you use document.body or #nexus-ui-container */
@@ -241,4 +252,20 @@ export async function primePreviewIframe() {
   const iframe = document.getElementById("preview-sandbox-iframe");
   if (!iframe) return;
   await loadPreviewIframeSrcdoc(iframe, buildPreviewSrcdoc());
+}
+
+export function syncPreviewIframeTheme() {
+  const iframe = document.getElementById("preview-sandbox-iframe");
+  const doc = iframe?.contentDocument;
+  if (!doc?.body) return;
+
+  const { fg, bg, panelBg, panelBorder } = getPreviewThemeColors();
+  doc.body.style.background = bg;
+  doc.body.style.color = fg;
+
+  const inner = doc.getElementById("nexus-ui-container");
+  if (inner && inner.children.length > 0) {
+    inner.style.background = panelBg;
+    inner.style.borderColor = panelBorder;
+  }
 }

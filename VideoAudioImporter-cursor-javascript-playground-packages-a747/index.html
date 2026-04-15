@@ -13,9 +13,12 @@
         var preferredDark =
           window.matchMedia &&
           window.matchMedia("(prefers-color-scheme: dark)").matches;
-        var theme = o.theme === "dark" || o.theme === "light" || o.theme === "system"
-          ? o.theme
-          : "light";
+        var theme =
+          o.theme === "dark" || o.theme === "night" || o.theme === "light" || o.theme === "system"
+            ? o.theme === "night"
+              ? "dark"
+              : o.theme
+            : "light";
         var useDark = theme === "dark" || (theme === "system" && preferredDark);
         if (useDark) el.classList.add("pg-theme-dark");
         var fs = parseInt(o.editorFontSize, 10);
@@ -937,7 +940,10 @@
       background: transparent;
     }
     html.pg-theme-dark #nexus-ui-container {
-      background: radial-gradient(circle at center, rgba(45, 212, 191, 0.08) 0%, var(--bg-base) 72%);
+      background:
+        radial-gradient(circle at 52% 38%, rgba(45, 212, 191, 0.05) 0%, rgba(45, 212, 191, 0.02) 28%, transparent 56%),
+        radial-gradient(circle at 50% 58%, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.02) 30%, transparent 62%),
+        linear-gradient(180deg, rgba(10, 16, 25, 0.92), rgba(8, 13, 21, 0.98));
     }
 
     .empty-state {
@@ -1235,10 +1241,29 @@
 
     html.pg-theme-dark .empty-card {
       background:
-        radial-gradient(circle at top, rgba(255, 255, 255, 0.05), transparent 58%),
-        linear-gradient(180deg, rgba(16, 23, 34, 0.94), rgba(12, 18, 28, 0.98));
-      border-color: rgba(95, 201, 190, 0.16);
-      box-shadow: 0 20px 44px rgba(0, 0, 0, 0.28);
+        radial-gradient(circle at 50% -8%, rgba(45, 212, 191, 0.07), transparent 42%),
+        linear-gradient(180deg, rgba(14, 22, 33, 0.96), rgba(10, 16, 25, 0.99));
+      border-color: rgba(95, 201, 190, 0.24);
+      box-shadow:
+        0 24px 52px rgba(0, 0, 0, 0.48),
+        inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    }
+
+    html.pg-theme-dark .empty-card::before {
+      background:
+        radial-gradient(circle at 18% 20%, rgba(95, 201, 190, 0.09), transparent 32%),
+        radial-gradient(circle at 82% 78%, rgba(56, 189, 248, 0.05), transparent 28%);
+      opacity: 0.5;
+    }
+
+    html.pg-theme-dark .empty-eyebrow {
+      color: #7ee9dd;
+    }
+
+    html.pg-theme-dark .empty-text,
+    html.pg-theme-dark .empty-workflow-tagline,
+    html.pg-theme-dark .empty-workflow-steps {
+      color: #b9c8d8;
     }
 
     html.pg-theme-dark .empty-workflow {
@@ -1764,7 +1789,7 @@
           <span class="appearance-menu-label" id="appearance-label-theme">Theme</span>
           <div class="appearance-segment" role="radiogroup" aria-labelledby="appearance-label-theme">
             <button type="button" id="appearance-theme-light" role="radio" aria-checked="true" aria-pressed="true">Light</button>
-            <button type="button" id="appearance-theme-dark" role="radio" aria-checked="false" aria-pressed="false">Dark</button>
+            <button type="button" id="appearance-theme-dark" role="radio" aria-checked="false" aria-pressed="false">Night</button>
             <button type="button" id="appearance-theme-system" role="radio" aria-checked="false" aria-pressed="false">System</button>
           </div>
         </div>
