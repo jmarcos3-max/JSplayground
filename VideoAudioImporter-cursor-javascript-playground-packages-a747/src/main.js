@@ -60,7 +60,7 @@ initSamplesGallery();
 initPreviewEmptyOverlay();
 void primePreviewIframe();
 
-const audiotoolClientId = "379f8d67-b211-43b2-8a9d-9553aa8aad32";
+const audiotoolClientId = "e3696833-ed9a-4fd8-989e-cf0d2d59bec0";
 const audiotoolScope = "project:write";
 const LAST_CONNECTED_PROJECT_KEY = "audiotool-playground-last-project-id";
 
