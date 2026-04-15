@@ -37,7 +37,7 @@ Open: `http://127.0.0.1:5173/`
 
 This repo is preconfigured with your client ID:
 
-`379f8d67-b211-43b2-8a9d-9553aa8aad32`
+`e3696833-ed9a-4fd8-989e-cf0d2d59bec0`
 
 Register/update your app on
 `https://developer.audiotool.com/applications` with:
